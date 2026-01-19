@@ -109,6 +109,9 @@ export const opdAPI = {
   startConsultation: (id) => api.post(`/opd/queue/${id}/start_consultation/`),
   endConsultation: (id) => api.post(`/opd/queue/${id}/end_consultation/`),
   getStatistics: () => api.get('/opd/statistics/'),
+  
+  // ML Wait Time Prediction Endpoint
+  predictWaitTime: (patientData) => api.post('/opd/predict-wait-time/', patientData || {}),
 };
 
 // Beds API
@@ -136,6 +139,12 @@ export const inventoryAPI = {
   getExpiringSoon: () => api.get('/inventory/items/expiring_soon/'),
   getCategories: () => api.get('/inventory/categories/'),
   createTransaction: (data) => api.post('/inventory/transactions/', data),
+  
+  // ML Prediction Endpoints
+  getPrediction: (itemId) => api.get(`/inventory/predict/${itemId}/`),
+  getAllAlerts: () => api.get('/inventory/alerts/'),
+  getDemandForecast: (days = 7) => api.get(`/inventory/demand-forecast/?days=${days}`),
+  getManualPrediction: (itemData) => api.post('/inventory/predict/manual/', { item_data: itemData }),
 };
 
 // Dashboard API
