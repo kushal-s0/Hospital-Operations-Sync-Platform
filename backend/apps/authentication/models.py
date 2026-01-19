@@ -138,6 +138,46 @@ class Patient(models.Model):
         return self.full_name
 
 
+class OPDQueue(models.Model):
+    """Model representing OPD queue entries (mapped to MySQL opd_queue table)."""
+    
+    STATUS_CHOICES = [
+        ('waiting', 'Waiting'),
+        ('in_consultation', 'In Consultation'),
+        ('completed', 'Completed'),
+        ('cancelled', 'Cancelled'),
+    ]
+    
+    PRIORITY_CHOICES = [
+        ('normal', 'Normal'),
+        ('urgent', 'Urgent'),
+        ('emergency', 'Emergency'),
+    ]
+    
+    patient = models.ForeignKey(Patient, on_delete=models.DO_NOTHING, db_column='patient_id')
+    doctor = models.ForeignKey(StaffUser, on_delete=models.DO_NOTHING, db_column='doctor_id', related_name='opd_queue_doctor')
+    department = models.ForeignKey(Department, on_delete=models.DO_NOTHING, db_column='department_id')
+    token_number = models.IntegerField()
+    status = models.CharField(max_length=15, choices=STATUS_CHOICES, default='waiting', null=True, blank=True)
+    priority = models.CharField(max_length=9, choices=PRIORITY_CHOICES, default='normal', null=True, blank=True)
+    check_in_time = models.DateTimeField(null=True, blank=True)
+    consultation_start_time = models.DateTimeField(null=True, blank=True)
+    consultation_end_time = models.DateTimeField(null=True, blank=True)
+    estimated_wait_time = models.IntegerField(null=True, blank=True)
+    notes = models.TextField(null=True, blank=True)
+    created_at = models.DateTimeField(null=True, blank=True)
+    updated_at = models.DateTimeField(null=True, blank=True)
+    admin_id = models.IntegerField(null=True, blank=True)
+
+    class Meta:
+        managed = False
+        db_table = 'opd_queue'
+        ordering = ['priority', 'check_in_time']
+
+    def __str__(self):
+        return f"Token #{self.token_number} - {self.patient.full_name if self.patient else 'Unknown'}"
+
+
 class Bed(models.Model):
     """Model representing a hospital bed (mapped to MySQL beds table)."""
     BED_TYPE_CHOICES = [
