@@ -3,9 +3,10 @@ from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from django.utils import timezone
-from django.db.models import Avg, Count
+from django.db.models import Avg, Count, Q
 from .models import OPDQueue, OPDStatistics
 from .serializers import OPDQueueSerializer, OPDStatisticsSerializer
+from apps.authentication.models import StaffUser
 import joblib
 import numpy as np
 import os
@@ -16,7 +17,113 @@ MODELS_DIR = os.path.join(os.path.dirname(__file__), '..', '..', '..', 'models')
 
 
 # =============================================================================
-# WAIT TIME PREDICTION ENDPOINT
+# HELPER FUNCTION: CALCULATE PATIENT ESTIMATED WAIT TIME
+# =============================================================================
+
+def calculate_patient_wait_time(patient_queue_entry):
+    """
+    Calculate ML-predicted wait time for a specific patient considering:
+    - Their position in queue
+    - Their priority level
+    - Doctor availability
+    - Current queue load
+    
+    Returns: estimated wait time in minutes
+    """
+    try:
+        # Get current time and stats
+        current_hour = timezone.now().hour
+        is_weekend = timezone.now().weekday() >= 5
+        
+        # Get patient's doctor
+        patient_doctor = patient_queue_entry.doctor
+        
+        # Check if doctor is currently busy (has patients in consultation)
+        doctor_busy = False
+        if patient_doctor:
+            doctor_busy = OPDQueue.objects.filter(
+                doctor=patient_doctor,
+                status='in_consultation'
+            ).exists()
+        
+        # Count patients waiting ahead of this patient (considering priority)
+        priority_order = {'emergency': 0, 'urgent': 1, 'normal': 2}
+        patient_priority_level = priority_order.get(patient_queue_entry.priority, 2)
+        
+        # Count patients with higher priority (emergency always ahead, urgent ahead of normal)
+        if patient_priority_level == 2:  # Normal priority
+            patients_ahead = OPDQueue.objects.filter(
+                status='waiting',
+                check_in_time__lt=patient_queue_entry.check_in_time
+            ).filter(
+                Q(priority='emergency') | Q(priority='urgent')
+            ).count()
+        elif patient_priority_level == 1:  # Urgent priority
+            patients_ahead = OPDQueue.objects.filter(
+                status='waiting',
+                check_in_time__lt=patient_queue_entry.check_in_time,
+                priority='emergency'
+            ).count()
+        else:  # Emergency priority
+            patients_ahead = 0  # No one ahead of emergency
+        
+        # If same doctor, count only patients assigned to this doctor
+        if patient_doctor:
+            patients_ahead_same_doctor = OPDQueue.objects.filter(
+                doctor=patient_doctor,
+                status='waiting',
+                check_in_time__lt=patient_queue_entry.check_in_time
+            ).count()
+        else:
+            patients_ahead_same_doctor = patients_ahead
+        
+        # Average consultation time (default 15 minutes)
+        avg_consultation = OPDStatistics.objects.aggregate(
+            avg=Avg('average_consultation_time')
+        )['avg'] or 15
+        
+        # Base wait time calculation
+        if doctor_busy:
+            # Doctor is busy, add current consultation time + queue
+            base_wait = avg_consultation + (patients_ahead_same_doctor * avg_consultation)
+        else:
+            # Doctor is free, only queue ahead
+            base_wait = patients_ahead_same_doctor * avg_consultation
+        
+        # Priority adjustment
+        priority_multiplier = {
+            'emergency': 0.3,  # Emergency patients wait less
+            'urgent': 0.6,
+            'normal': 1.0
+        }.get(patient_queue_entry.priority, 1.0)
+        
+        # Time of day factor
+        time_factor = 1.0
+        if 9 <= current_hour <= 11:  # Peak morning
+            time_factor = 1.2
+        elif 14 <= current_hour <= 16:  # Peak afternoon
+            time_factor = 1.15
+        elif current_hour >= 18:  # Evening
+            time_factor = 1.3
+        
+        # Weekend factor
+        weekend_factor = 1.2 if is_weekend else 1.0
+        
+        # Calculate final wait time
+        estimated_wait = base_wait * priority_multiplier * time_factor * weekend_factor
+        
+        # Minimum wait time is 5 minutes
+        estimated_wait = max(5, int(estimated_wait))
+        
+        return estimated_wait
+        
+    except Exception as e:
+        print(f"Error calculating wait time: {e}")
+        return 15  # Default fallback
+
+
+# =============================================================================
+# WAIT TIME PREDICTION ENDPOINT (UNCHANGED - FOR PREDICTOR PANEL)
 # =============================================================================
 
 @api_view(['POST'])
@@ -159,6 +266,26 @@ class OPDQueueViewSet(viewsets.ModelViewSet):
     queryset = OPDQueue.objects.all()
     serializer_class = OPDQueueSerializer
     
+    def list(self, request, *args, **kwargs):
+        """Override list to add ML-predicted wait times for each patient."""
+        queryset = self.filter_queryset(self.get_queryset())
+        
+        # Calculate estimated wait time for each waiting patient
+        for queue_entry in queryset:
+            if queue_entry.status == 'waiting':
+                estimated_wait = calculate_patient_wait_time(queue_entry)
+                queue_entry.estimated_wait_time = estimated_wait
+                # Update in database
+                OPDQueue.objects.filter(id=queue_entry.id).update(estimated_wait_time=estimated_wait)
+        
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+    
     def create(self, request, *args, **kwargs):
         """Override create to add better error logging."""
         print("=" * 60)
@@ -174,12 +301,27 @@ class OPDQueueViewSet(viewsets.ModelViewSet):
         
         try:
             self.perform_create(serializer)
-            print(f"Successfully created: {serializer.data}")
-            headers = self.get_success_headers(serializer.data)
-            return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+            
+            # Calculate initial estimated wait time
+            created_entry = OPDQueue.objects.get(id=serializer.data['id'])
+            estimated_wait = calculate_patient_wait_time(created_entry)
+            created_entry.estimated_wait_time = estimated_wait
+            created_entry.save(update_fields=['estimated_wait_time'])
+            
+            print(f"Successfully created with estimated wait time: {estimated_wait} minutes")
+            
+            # Re-serialize with updated wait time
+            updated_serializer = self.get_serializer(created_entry)
+            headers = self.get_success_headers(updated_serializer.data)
+            return Response(updated_serializer.data, status=status.HTTP_201_CREATED, headers=headers)
         except Exception as e:
             print(f"Error creating queue entry: {str(e)}")
             import traceback
+            traceback.print_exc()
+            return Response(
+                {'error': str(e)}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
             traceback.print_exc()
             return Response(
                 {'error': str(e)}, 
@@ -199,20 +341,47 @@ class OPDQueueViewSet(viewsets.ModelViewSet):
     
     @action(detail=True, methods=['post'])
     def start_consultation(self, request, pk=None):
-        """Mark patient consultation as started."""
+        """Mark patient consultation as started and recalculate wait times."""
         queue_entry = self.get_object()
         queue_entry.status = 'in_consultation'
         queue_entry.consultation_start_time = timezone.now()
+        queue_entry.estimated_wait_time = None  # Clear wait time when consultation starts
         queue_entry.save()
+        
+        # Recalculate wait times for other waiting patients with same doctor
+        if queue_entry.doctor:
+            waiting_patients = OPDQueue.objects.filter(
+                doctor=queue_entry.doctor,
+                status='waiting'
+            )
+            for patient in waiting_patients:
+                estimated_wait = calculate_patient_wait_time(patient)
+                patient.estimated_wait_time = estimated_wait
+                patient.save(update_fields=['estimated_wait_time'])
+        
         return Response({'status': 'consultation started'})
     
     @action(detail=True, methods=['post'])
     def end_consultation(self, request, pk=None):
-        """Mark patient consultation as completed."""
+        """Mark patient consultation as completed and recalculate wait times."""
         queue_entry = self.get_object()
+        doctor = queue_entry.doctor
         queue_entry.status = 'completed'
         queue_entry.consultation_end_time = timezone.now()
+        queue_entry.estimated_wait_time = None  # Clear wait time when completed
         queue_entry.save()
+        
+        # Recalculate wait times for waiting patients with same doctor (doctor now free)
+        if doctor:
+            waiting_patients = OPDQueue.objects.filter(
+                doctor=doctor,
+                status='waiting'
+            )
+            for patient in waiting_patients:
+                estimated_wait = calculate_patient_wait_time(patient)
+                patient.estimated_wait_time = estimated_wait
+                patient.save(update_fields=['estimated_wait_time'])
+        
         return Response({'status': 'consultation completed'})
 
 
