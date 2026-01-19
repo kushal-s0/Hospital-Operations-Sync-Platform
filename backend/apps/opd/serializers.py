@@ -29,6 +29,16 @@ class OPDQueueSerializer(serializers.ModelSerializer):
         extra_kwargs = {
             'doctor': {'read_only': True},
             'department': {'read_only': True},
+            'patient': {'read_only': True},
+            'token_number': {'required': False},
+            'check_in_time': {'required': False},
+            'created_at': {'required': False},
+            'updated_at': {'required': False},
+            'consultation_start_time': {'required': False},
+            'consultation_end_time': {'required': False},
+            'estimated_wait_time': {'required': False},
+            'admin_id': {'required': False},
+            'id': {'read_only': True},
         }
     
     def get_patient_name(self, obj):
@@ -78,35 +88,56 @@ class OPDQueueSerializer(serializers.ModelSerializer):
             validated_data['patient'] = patient
         
         # Handle doctor - try to find by ID first, then by name
+        doctor_assigned = False
         if doctor_id:
             try:
                 doctor = StaffUser.objects.get(staff_id=doctor_id, role='Doctor')
                 validated_data['doctor'] = doctor
+                doctor_assigned = True
             except StaffUser.DoesNotExist:
                 pass
-        elif doctor_name_temp:
+        
+        if not doctor_assigned and doctor_name_temp:
             # Try to find doctor by name
-            doctors = StaffUser.objects.filter(role='Doctor')
+            doctors = StaffUser.objects.filter(role='Doctor', is_active=True)
             for doc in doctors:
                 if doctor_name_temp.lower() in doc.full_name.lower():
                     validated_data['doctor'] = doc
+                    doctor_assigned = True
                     break
         
+        # If still no doctor, assign first available doctor
+        if not doctor_assigned:
+            first_doctor = StaffUser.objects.filter(role='Doctor', is_active=True).first()
+            if first_doctor:
+                validated_data['doctor'] = first_doctor
+            else:
+                raise serializers.ValidationError({'doctor': 'No active doctors found in the system'})
+        
         # Handle department - try to find by ID first, then by name
+        department_assigned = False
         if department_id:
             try:
                 department = Department.objects.get(department_id=department_id)
                 validated_data['department'] = department
+                department_assigned = True
             except Department.DoesNotExist:
                 pass
-        elif department_name_temp:
+        
+        if not department_assigned and department_name_temp:
             # Try to find department by name
-            try:
-                department = Department.objects.filter(department_name__icontains=department_name_temp).first()
-                if department:
-                    validated_data['department'] = department
-            except Department.DoesNotExist:
-                pass
+            department = Department.objects.filter(department_name__icontains=department_name_temp).first()
+            if department:
+                validated_data['department'] = department
+                department_assigned = True
+        
+        # If still no department, assign first available department
+        if not department_assigned:
+            first_dept = Department.objects.first()
+            if first_dept:
+                validated_data['department'] = first_dept
+            else:
+                raise serializers.ValidationError({'department': 'No departments found in the system'})
         
         # Auto-generate token number if not provided
         if 'token_number' not in validated_data:
@@ -114,13 +145,19 @@ class OPDQueueSerializer(serializers.ModelSerializer):
             validated_data['token_number'] = (max_token or 0) + 1
         
         # Set timestamps
-        if 'check_in_time' not in validated_data:
+        if 'check_in_time' not in validated_data or not validated_data['check_in_time']:
             validated_data['check_in_time'] = timezone.now()
-        if 'created_at' not in validated_data:
+        if 'created_at' not in validated_data or not validated_data['created_at']:
             validated_data['created_at'] = timezone.now()
         
+        # Set updated_at
+        validated_data['updated_at'] = timezone.now()
+        
         # Create queue entry
-        return super().create(validated_data)
+        try:
+            return super().create(validated_data)
+        except Exception as e:
+            raise serializers.ValidationError({'error': f'Failed to create queue entry: {str(e)}'})
 
 
 class OPDStatisticsSerializer(serializers.ModelSerializer):

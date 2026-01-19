@@ -13,6 +13,10 @@ const OPDQueue = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   
+  // Lists for dropdowns
+  const [doctors, setDoctors] = useState([]);
+  const [departments, setDepartments] = useState([]);
+  
   // Get current user from localStorage
   const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
   const isNurse = currentUser.role === 'Nurse';
@@ -22,7 +26,7 @@ const OPDQueue = () => {
     patient_first_name: '',
     patient_last_name: '',
     contact_number: '',
-    department: 'General Medicine',
+    department: '',
     doctor_name: '',
     priority: 'normal',
     notes: ''
@@ -32,6 +36,7 @@ const OPDQueue = () => {
   useEffect(() => {
     fetchQueue();
     fetchWaitTimePrediction();
+    fetchDoctorsAndDepartments();
   }, []);
 
   // Fetch current queue from API
@@ -46,6 +51,67 @@ const OPDQueue = () => {
     } catch (error) {
       console.error('Error fetching queue:', error);
       setQueue([]); // Set empty array on error
+    }
+  };
+
+  // Fetch doctors and departments for form dropdowns
+  const fetchDoctorsAndDepartments = async () => {
+    try {
+      // Fetch doctors (staff users with role=Doctor)
+      const token = localStorage.getItem('access_token');
+      const doctorsResponse = await fetch('http://localhost:8000/api/auth/staff/', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (doctorsResponse.ok) {
+        const doctorsData = await doctorsResponse.json();
+        // Filter only doctors
+        const doctorsList = Array.isArray(doctorsData) 
+          ? doctorsData.filter(staff => staff.role === 'Doctor')
+          : (doctorsData.results || []).filter(staff => staff.role === 'Doctor');
+        setDoctors(doctorsList);
+      }
+
+      // Fetch departments - using a mock for now, you can create an API endpoint
+      // For now, we'll use the departments from the database
+      const deptResponse = await fetch('http://localhost:8000/api/auth/departments/', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (deptResponse.ok) {
+        const deptData = await deptResponse.json();
+        const deptList = Array.isArray(deptData) ? deptData : (deptData.results || []);
+        setDepartments(deptList);
+      } else {
+        // Fallback to hardcoded departments if API not available
+        setDepartments([
+          { department_id: 1, department_name: 'Emergency' },
+          { department_id: 2, department_name: 'Cardiology' },
+          { department_id: 3, department_name: 'Orthopedics' },
+          { department_id: 4, department_name: 'Pediatrics' },
+          { department_id: 5, department_name: 'General Medicine' },
+          { department_id: 6, department_name: 'ICU' },
+          { department_id: 7, department_name: 'Surgery' }
+        ]);
+      }
+    } catch (error) {
+      console.error('Error fetching doctors/departments:', error);
+      // Set fallback data
+      setDepartments([
+        { department_id: 1, department_name: 'Emergency' },
+        { department_id: 2, department_name: 'Cardiology' },
+        { department_id: 3, department_name: 'Orthopedics' },
+        { department_id: 4, department_name: 'Pediatrics' },
+        { department_id: 5, department_name: 'General Medicine' },
+        { department_id: 6, department_name: 'ICU' },
+        { department_id: 7, department_name: 'Surgery' }
+      ]);
     }
   };
 
@@ -86,7 +152,10 @@ const OPDQueue = () => {
         notes: patientForm.notes
       };
 
-      await opdAPI.create(queueData);
+      console.log('Submitting queue data:', queueData);
+      const response = await opdAPI.create(queueData);
+      console.log('Response:', response);
+      
       setSuccess('Patient added to queue successfully!');
       
       // Reset form
@@ -94,7 +163,7 @@ const OPDQueue = () => {
         patient_first_name: '',
         patient_last_name: '',
         contact_number: '',
-        department: 'General Medicine',
+        department: '',
         doctor_name: '',
         priority: 'normal',
         notes: ''
@@ -107,7 +176,13 @@ const OPDQueue = () => {
         setSuccess('');
       }, 2000);
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to add patient to queue');
+      console.error('Error adding patient:', err);
+      console.error('Error response:', err.response);
+      const errorMsg = err.response?.data?.error 
+        || err.response?.data?.detail
+        || JSON.stringify(err.response?.data)
+        || 'Failed to add patient to queue';
+      setError(errorMsg);
     } finally {
       setLoading(false);
     }
@@ -320,27 +395,36 @@ const OPDQueue = () => {
                       onChange={handleFormChange}
                       required
                     >
-                      <option value="General Medicine">General Medicine</option>
-                      <option value="Cardiology">Cardiology</option>
-                      <option value="Orthopedics">Orthopedics</option>
-                      <option value="Pediatrics">Pediatrics</option>
-                      <option value="Emergency">Emergency</option>
+                      <option value="">-- Select Department --</option>
+                      {departments.map(dept => (
+                        <option key={dept.department_id} value={dept.department_name}>
+                          {dept.department_name}
+                        </option>
+                      ))}
                     </select>
                   </div>
                 </div>
 
                 <div className="form-row">
                   <div className="form-group">
-                    <label htmlFor="doctor_name">Doctor Name *</label>
-                    <input
-                      type="text"
+                    <label htmlFor="doctor_name">Doctor *</label>
+                    <select
                       id="doctor_name"
                       name="doctor_name"
                       value={patientForm.doctor_name}
                       onChange={handleFormChange}
                       required
-                      placeholder="Enter doctor name"
-                    />
+                    >
+                      <option value="">-- Select Doctor --</option>
+                      {doctors.map(doctor => (
+                        <option 
+                          key={doctor.staff_id} 
+                          value={`${doctor.first_name} ${doctor.last_name}`}
+                        >
+                          Dr. {doctor.first_name} {doctor.last_name}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                   
                   <div className="form-group">

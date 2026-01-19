@@ -159,6 +159,33 @@ class OPDQueueViewSet(viewsets.ModelViewSet):
     queryset = OPDQueue.objects.all()
     serializer_class = OPDQueueSerializer
     
+    def create(self, request, *args, **kwargs):
+        """Override create to add better error logging."""
+        print("=" * 60)
+        print("CREATE OPD QUEUE ENTRY")
+        print("=" * 60)
+        print(f"Request data: {request.data}")
+        
+        serializer = self.get_serializer(data=request.data)
+        
+        if not serializer.is_valid():
+            print(f"Validation errors: {serializer.errors}")
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            self.perform_create(serializer)
+            print(f"Successfully created: {serializer.data}")
+            headers = self.get_success_headers(serializer.data)
+            return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+        except Exception as e:
+            print(f"Error creating queue entry: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            return Response(
+                {'error': str(e)}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    
     @action(detail=False, methods=['get'])
     def current_queue(self, request):
         """Get current active queue."""

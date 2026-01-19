@@ -154,6 +154,7 @@ class OPDQueue(models.Model):
         ('emergency', 'Emergency'),
     ]
     
+    id = models.AutoField(primary_key=True)  # Django's default auto-incrementing primary key
     patient = models.ForeignKey(Patient, on_delete=models.DO_NOTHING, db_column='patient_id')
     doctor = models.ForeignKey(StaffUser, on_delete=models.DO_NOTHING, db_column='doctor_id', related_name='opd_queue_doctor')
     department = models.ForeignKey(Department, on_delete=models.DO_NOTHING, db_column='department_id')
