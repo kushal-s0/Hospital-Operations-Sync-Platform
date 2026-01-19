@@ -48,6 +48,13 @@ def login_view(request):
                 status=status.HTTP_401_UNAUTHORIZED
             )
         
+        # Check if password is set
+        if not user.password_hash:
+            return Response(
+                {'error': 'Account not activated. Please contact administrator to set password.'},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+        
         # Verify password
         if not user.check_password(password):
             return Response(

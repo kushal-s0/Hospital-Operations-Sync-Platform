@@ -3,9 +3,21 @@
   margin: 0 auto;
 }
 
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.header-actions {
+  display: flex;
+  gap: 12px;
+}
+
 .inventory-stats {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 16px;
   margin-bottom: 24px;
 }
@@ -26,6 +38,11 @@
   border-left: 4px solid #dc2626;
 }
 
+.inventory-stats .stat-card.ml-priority {
+  border-left: 4px solid #7c3aed;
+  background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%);
+}
+
 .inventory-stats .stat-value {
   display: block;
   font-size: 2rem;
@@ -36,6 +53,267 @@
 .inventory-stats .stat-label {
   font-size: 0.85rem;
   color: #64748b;
+}
+
+/* ML Predictions Section */
+.ml-predictions-section {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 24px;
+  border-radius: 16px;
+  margin-bottom: 24px;
+  color: white;
+}
+
+.ml-predictions-section h2 {
+  margin: 0 0 16px 0;
+  font-size: 1.5rem;
+}
+
+.ml-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.ml-stat-card {
+  background: rgba(255, 255, 255, 0.15);
+  padding: 16px;
+  border-radius: 12px;
+  text-align: center;
+  backdrop-filter: blur(10px);
+}
+
+.ml-stat-card .stat-value {
+  display: block;
+  font-size: 2rem;
+  font-weight: 700;
+}
+
+.ml-stat-card .stat-label {
+  font-size: 0.85rem;
+  opacity: 0.9;
+}
+
+.alerts-list h3 {
+  margin: 0 0 12px 0;
+  font-size: 1.1rem;
+}
+
+.alerts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 12px;
+}
+
+.alert-card {
+  background: rgba(255, 255, 255, 0.95);
+  color: #1e293b;
+  padding: 16px;
+  border-radius: 12px;
+  border-left: 4px solid #ea580c;
+}
+
+.alert-card.high {
+  border-left-color: #dc2626;
+}
+
+.alert-card.medium {
+  border-left-color: #ea580c;
+}
+
+.alert-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.item-name {
+  font-weight: 600;
+}
+
+.urgency-badge {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.urgency-badge.high {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+.urgency-badge.medium {
+  background: #fff7ed;
+  color: #ea580c;
+}
+
+.alert-details {
+  font-size: 0.85rem;
+  color: #64748b;
+}
+
+.alert-details p {
+  margin: 4px 0;
+}
+
+.alert-card .recommendation {
+  margin-top: 8px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #1e3c72;
+}
+
+/* Demand Forecast Section */
+.demand-forecast-section {
+  background: white;
+  padding: 24px;
+  border-radius: 16px;
+  margin-bottom: 24px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.demand-forecast-section h2 {
+  margin: 0 0 8px 0;
+  color: #1e293b;
+}
+
+.forecast-subtitle {
+  color: #64748b;
+  margin-bottom: 16px;
+}
+
+.demand-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.demand-card {
+  background: #f8fafc;
+  padding: 16px;
+  border-radius: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border: 1px solid #e2e8f0;
+}
+
+.medicine-name {
+  font-weight: 500;
+  color: #1e293b;
+  font-size: 0.9rem;
+}
+
+.demand-qty {
+  background: #1e3c72;
+  color: white;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+/* Prediction Modal */
+.prediction-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.prediction-modal {
+  background: white;
+  border-radius: 16px;
+  padding: 24px;
+  max-width: 500px;
+  width: 90%;
+  max-height: 80vh;
+  overflow-y: auto;
+  position: relative;
+}
+
+.prediction-modal h3 {
+  margin: 0 0 20px 0;
+  color: #1e293b;
+}
+
+.close-btn {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: #64748b;
+}
+
+.prediction-section {
+  background: #f8fafc;
+  padding: 16px;
+  border-radius: 10px;
+  margin-bottom: 12px;
+}
+
+.prediction-section h4 {
+  margin: 0 0 8px 0;
+  color: #1e293b;
+  font-size: 0.95rem;
+}
+
+.prediction-section p {
+  margin: 4px 0;
+  color: #64748b;
+  font-size: 0.9rem;
+}
+
+.prediction-result {
+  padding: 16px;
+  border-radius: 10px;
+  margin-top: 16px;
+}
+
+.prediction-result.high {
+  background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+  border: 1px solid #fecaca;
+}
+
+.prediction-result.medium {
+  background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%);
+  border: 1px solid #fed7aa;
+}
+
+.prediction-result.low {
+  background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+  border: 1px solid #bbf7d0;
+}
+
+.prediction-result h4 {
+  margin: 0 0 12px 0;
+}
+
+.risk-score {
+  font-size: 1.2rem;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.prediction-result .urgency {
+  font-weight: 600;
+}
+
+.prediction-result .recommendation {
+  margin-top: 8px;
+  font-weight: 500;
 }
 
 .inventory-tabs {

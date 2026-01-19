@@ -84,7 +84,9 @@ class StaffUser(models.Model):
 
     @property
     def full_name(self):
-        return f"{self.first_name} {self.last_name}".strip()
+        first = self.first_name or ''
+        last = self.last_name or ''
+        return f"{first} {last}".strip() or 'Unknown User'
 
     def __str__(self):
         return f"{self.full_name} ({self.role})"
