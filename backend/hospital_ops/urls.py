@@ -3,9 +3,14 @@ URL configuration for hospital_ops project.
 """
 from django.contrib import admin
 from django.urls import path, include
+from rest_framework_simplejwt.views import TokenRefreshView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    
+    # Authentication endpoints
+    path('api/auth/', include('apps.authentication.urls')),
+    path('api/auth/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     
     # API endpoints
     path('api/patients/', include('apps.patients.urls')),

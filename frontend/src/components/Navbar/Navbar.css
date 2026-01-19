@@ -30,6 +30,14 @@
   opacity: 0.9;
 }
 
+.navbar-user {
+  font-size: 0.95rem;
+  font-weight: 500;
+  padding: 6px 12px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+}
+
 .navbar-btn {
   background: rgba(255, 255, 255, 0.1);
   border: none;
@@ -42,4 +50,12 @@
 
 .navbar-btn:hover {
   background: rgba(255, 255, 255, 0.2);
+}
+
+.logout-btn {
+  background: rgba(255, 59, 48, 0.8);
+}
+
+.logout-btn:hover {
+  background: rgba(255, 59, 48, 1);
 }
