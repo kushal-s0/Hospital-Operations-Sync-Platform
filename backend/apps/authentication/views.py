@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.utils import timezone
 from django.db.models import Q
-from .models import StaffUser
+from .models import StaffUser, Department
 
 
 @api_view(['POST'])
@@ -150,3 +150,63 @@ def token_refresh_view(request):
     """
     from rest_framework_simplejwt.views import TokenRefreshView
     return TokenRefreshView.as_view()(request._request)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def staff_list(request):
+    """
+    Get list of all staff users (optionally filter by role)
+    """
+    try:
+        role = request.query_params.get('role', None)
+        
+        if role:
+            staff = StaffUser.objects.filter(role=role, is_active=True)
+        else:
+            staff = StaffUser.objects.filter(is_active=True)
+        
+        staff_data = [{
+            'staff_id': s.staff_id,
+            'first_name': s.first_name,
+            'last_name': s.last_name,
+            'full_name': s.full_name,
+            'role': s.role,
+            'email': s.email,
+            'phone_number': s.phone_number,
+            'department_id': s.department_id,
+            'hospital_id': s.hospital_id,
+        } for s in staff]
+        
+        return Response(staff_data, status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response(
+            {'error': f'Failed to fetch staff: {str(e)}'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def department_list(request):
+    """
+    Get list of all departments
+    """
+    try:
+        departments = Department.objects.all()
+        
+        dept_data = [{
+            'department_id': d.department_id,
+            'department_name': d.department_name,
+            'hospital_id': d.hospital_id,
+            'total_beds': d.total_beds,
+            'available_beds': d.available_beds,
+            'emergency_beds': d.emergency_beds,
+        } for d in departments]
+        
+        return Response(dept_data, status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response(
+            {'error': f'Failed to fetch departments: {str(e)}'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
