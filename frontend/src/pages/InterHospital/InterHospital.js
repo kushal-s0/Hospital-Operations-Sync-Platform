@@ -1,14 +1,36 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Table } from '../../components/Common';
+import { interHospitalAPI } from '../../services/api';
 import './InterHospital.css';
 
 const InterHospital = () => {
-  const [cityData, setCityData] = useState([
-    { hospital_code: 'HOSP-001', hospital_name: 'City General Hospital', city: 'Metro City', available_beds: 45, icu_beds_available: 5, occupancy_rate: 72, last_updated: '2026-01-19T10:30:00' },
-    { hospital_code: 'HOSP-002', hospital_name: 'Central Medical Center', city: 'Metro City', available_beds: 30, icu_beds_available: 2, occupancy_rate: 85, last_updated: '2026-01-19T10:28:00' },
-    { hospital_code: 'HOSP-003', hospital_name: 'Community Health Center', city: 'Metro City', available_beds: 60, icu_beds_available: 8, occupancy_rate: 55, last_updated: '2026-01-19T10:25:00' },
-    { hospital_code: 'HOSP-004', hospital_name: 'Regional Hospital', city: 'Metro City', available_beds: 20, icu_beds_available: 0, occupancy_rate: 95, last_updated: '2026-01-19T10:20:00' },
-  ]);
+  const [cityData, setCityData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const fetchCityData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await interHospitalAPI.getCityDashboard();
+      // Handle paginated response - data may be in .results or directly in .data
+      const responseData = response.data;
+      const cityDataArray = Array.isArray(responseData) 
+        ? responseData 
+        : (responseData.results || []);
+      setCityData(cityDataArray);
+    } catch (err) {
+      console.error('Failed to fetch inter-hospital data:', err);
+      setError('Failed to load inter-hospital data. Please try again.');
+      setCityData([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchCityData();
+  }, []);
 
   const columns = [
     { key: 'hospital_code', label: 'Hospital Code' },
@@ -51,9 +73,11 @@ const InterHospital = () => {
   ];
 
   const totalStats = {
-    totalAvailable: cityData.reduce((sum, h) => sum + h.available_beds, 0),
-    totalICU: cityData.reduce((sum, h) => sum + h.icu_beds_available, 0),
-    avgOccupancy: Math.round(cityData.reduce((sum, h) => sum + h.occupancy_rate, 0) / cityData.length),
+    totalAvailable: cityData.reduce((sum, h) => sum + (h.available_beds || 0), 0),
+    totalICU: cityData.reduce((sum, h) => sum + (h.icu_beds_available || 0), 0),
+    avgOccupancy: cityData.length > 0 
+      ? Math.round(cityData.reduce((sum, h) => sum + (h.occupancy_rate || 0), 0) / cityData.length) 
+      : 0,
   };
 
   return (
@@ -63,48 +87,59 @@ const InterHospital = () => {
           <h1>Inter-Hospital Capacity Sharing</h1>
           <p>City-wide bed availability and capacity coordination</p>
         </div>
-        <button className="btn btn-primary">🔄 Refresh Data</button>
+        <button className="btn btn-primary" onClick={fetchCityData}>🔄 Refresh Data</button>
       </div>
 
-      <div className="city-stats">
-        <div className="stat-card">
-          <div className="stat-icon">🏥</div>
-          <div className="stat-info">
-            <span className="stat-value">{cityData.length}</span>
-            <span className="stat-label">Connected Hospitals</span>
-          </div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-icon">🛏️</div>
-          <div className="stat-info">
-            <span className="stat-value">{totalStats.totalAvailable}</span>
-            <span className="stat-label">Total Available Beds</span>
-          </div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-icon">🚑</div>
-          <div className="stat-info">
-            <span className="stat-value">{totalStats.totalICU}</span>
-            <span className="stat-label">ICU Beds Available</span>
-          </div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-icon">📊</div>
-          <div className="stat-info">
-            <span className="stat-value">{totalStats.avgOccupancy}%</span>
-            <span className="stat-label">Avg City Occupancy</span>
-          </div>
-        </div>
-      </div>
+      {loading && <div className="loading">Loading inter-hospital data...</div>}
+      {error && <div className="error-message">{error}</div>}
 
-      <div className="api-info-card">
-        <h3>📡 API Endpoint for City Dashboard</h3>
-        <p>Share your hospital's anonymized capacity data with the central city health dashboard</p>
-        <code>GET /api/interhospital/city-dashboard/</code>
-      </div>
+      {!loading && !error && (
+        <>
+          <div className="city-stats">
+            <div className="stat-card">
+              <div className="stat-icon">🏥</div>
+              <div className="stat-info">
+                <span className="stat-value">{cityData.length}</span>
+                <span className="stat-label">Connected Hospitals</span>
+              </div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-icon">🛏️</div>
+              <div className="stat-info">
+                <span className="stat-value">{totalStats.totalAvailable}</span>
+                <span className="stat-label">Total Available Beds</span>
+              </div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-icon">🚑</div>
+              <div className="stat-info">
+                <span className="stat-value">{totalStats.totalICU}</span>
+                <span className="stat-label">ICU Beds Available</span>
+              </div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-icon">📊</div>
+              <div className="stat-info">
+                <span className="stat-value">{totalStats.avgOccupancy}%</span>
+                <span className="stat-label">Avg City Occupancy</span>
+              </div>
+            </div>
+          </div>
 
-      <h2>City-Wide Hospital Capacity</h2>
-      <Table columns={columns} data={cityData} />
+          <div className="api-info-card">
+            <h3>📡 API Endpoint for City Dashboard</h3>
+            <p>Share your hospital's anonymized capacity data with the central city health dashboard</p>
+            <code>GET /api/interhospital/city-dashboard/</code>
+          </div>
+
+          <h2>City-Wide Hospital Capacity</h2>
+          {cityData.length === 0 ? (
+            <p className="no-data">No hospital data available</p>
+          ) : (
+            <Table columns={columns} data={cityData} />
+          )}
+        </>
+      )}
     </div>
   );
 };

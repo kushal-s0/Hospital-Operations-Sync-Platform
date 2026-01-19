@@ -1,32 +1,67 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Table, StatusBadge } from '../../components/Common';
+import { admissionsAPI } from '../../services/api';
 import './Admissions.css';
 
 const Admissions = () => {
-  const [admissions, setAdmissions] = useState([
-    { id: 1, patient_name: 'John Doe', bed_number: 'GM-102', admission_type: 'planned', status: 'admitted', diagnosis: 'Pneumonia', treating_doctor: 'Dr. Smith', admission_date: '2026-01-18' },
-    { id: 2, patient_name: 'Jane Smith', bed_number: 'ICU-001', admission_type: 'emergency', status: 'admitted', diagnosis: 'Cardiac Arrest', treating_doctor: 'Dr. Johnson', admission_date: '2026-01-17' },
-    { id: 3, patient_name: 'Mike Wilson', bed_number: 'GM-103', admission_type: 'transfer', status: 'admitted', diagnosis: 'Post Surgery Care', treating_doctor: 'Dr. Brown', admission_date: '2026-01-15' },
-  ]);
-
+  const [admissions, setAdmissions] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [showForm, setShowForm] = useState(false);
 
+  const fetchAdmissions = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await admissionsAPI.getCurrent();
+      // Handle paginated response - data may be in .results or directly in .data
+      const responseData = response.data;
+      const admissionsData = Array.isArray(responseData) 
+        ? responseData 
+        : (responseData.results || []);
+      setAdmissions(admissionsData);
+    } catch (err) {
+      console.error('Failed to fetch admissions:', err);
+      setError('Failed to load admissions data. Please try again.');
+      setAdmissions([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchAdmissions();
+  }, []);
+
+  const handleDischarge = async (admissionId) => {
+    try {
+      await admissionsAPI.discharge(admissionId);
+      // Refresh the list after discharge
+      fetchAdmissions();
+    } catch (err) {
+      console.error('Failed to discharge patient:', err);
+      alert('Failed to discharge patient. Please try again.');
+    }
+  };
+
   const columns = [
-    { key: 'id', label: 'Admission #' },
+    { key: 'admission_id', label: 'Admission #' },
     { key: 'patient_name', label: 'Patient Name' },
-    { key: 'bed_number', label: 'Bed' },
+    { key: 'bed_info', label: 'Bed' },
     { 
-      key: 'admission_type', 
-      label: 'Type',
-      render: (row) => <StatusBadge status={row.admission_type} />
+      key: 'condition_level', 
+      label: 'Condition',
+      render: (row) => <StatusBadge status={row.condition_level || 'stable'} />
     },
-    { key: 'diagnosis', label: 'Diagnosis' },
-    { key: 'treating_doctor', label: 'Doctor' },
-    { key: 'admission_date', label: 'Admission Date' },
+    { 
+      key: 'admission_time', 
+      label: 'Admission Date',
+      render: (row) => row.admission_time ? new Date(row.admission_time).toLocaleDateString() : '-'
+    },
     { 
       key: 'status', 
       label: 'Status',
-      render: (row) => <StatusBadge status={row.status} />
+      render: (row) => <StatusBadge status={row.status?.toLowerCase() || 'active'} />
     },
     {
       key: 'actions',
@@ -34,7 +69,14 @@ const Admissions = () => {
       render: (row) => (
         <div className="action-buttons">
           <button className="btn btn-secondary btn-sm">View</button>
-          <button className="btn btn-success btn-sm">Discharge</button>
+          {row.status === 'Active' && (
+            <button 
+              className="btn btn-success btn-sm"
+              onClick={() => handleDischarge(row.admission_id)}
+            >
+              Discharge
+            </button>
+          )}
         </div>
       )
     }
@@ -62,37 +104,28 @@ const Admissions = () => {
                 <input type="text" placeholder="Enter patient name" />
               </div>
               <div className="form-group">
-                <label>Admission Type</label>
+                <label>Condition Level</label>
                 <select>
-                  <option value="planned">Planned</option>
-                  <option value="emergency">Emergency</option>
-                  <option value="transfer">Transfer</option>
+                  <option value="stable">Stable</option>
+                  <option value="critical">Critical</option>
+                  <option value="serious">Serious</option>
                 </select>
-              </div>
-            </div>
-            <div className="form-row">
-              <div className="form-group">
-                <label>Diagnosis</label>
-                <input type="text" placeholder="Enter diagnosis" />
-              </div>
-              <div className="form-group">
-                <label>Treating Doctor</label>
-                <input type="text" placeholder="Enter doctor name" />
               </div>
             </div>
             <div className="form-row">
               <div className="form-group">
                 <label>Preferred Bed Type</label>
                 <select>
-                  <option value="general">General</option>
-                  <option value="icu">ICU</option>
-                  <option value="private">Private</option>
-                  <option value="semi_private">Semi-Private</option>
+                  <option value="General">General</option>
+                  <option value="ICU">ICU</option>
+                  <option value="Private">Private</option>
+                  <option value="Semi-Private">Semi-Private</option>
                 </select>
               </div>
               <div className="form-group">
                 <label>Department</label>
                 <select>
+                  <option value="">Select Department</option>
                   <option value="general_medicine">General Medicine</option>
                   <option value="cardiology">Cardiology</option>
                   <option value="surgery">Surgery</option>
@@ -109,22 +142,31 @@ const Admissions = () => {
         </div>
       )}
 
-      <div className="admission-stats">
-        <div className="stat-item">
-          <span className="stat-number">{admissions.length}</span>
-          <span className="stat-text">Current Admissions</span>
-        </div>
-        <div className="stat-item">
-          <span className="stat-number">{admissions.filter(a => a.admission_type === 'emergency').length}</span>
-          <span className="stat-text">Emergency Cases</span>
-        </div>
-        <div className="stat-item">
-          <span className="stat-number">3</span>
-          <span className="stat-text">Discharges Today</span>
-        </div>
-      </div>
+      {loading && <div className="loading">Loading admissions...</div>}
+      {error && <div className="error-message">{error}</div>}
 
-      <Table columns={columns} data={admissions} />
+      {!loading && !error && (
+        <>
+          <div className="admission-stats">
+            <div className="stat-item">
+              <span className="stat-number">{admissions.length}</span>
+              <span className="stat-text">Current Admissions</span>
+            </div>
+            <div className="stat-item">
+              <span className="stat-number">
+                {admissions.filter(a => a.condition_level === 'critical').length}
+              </span>
+              <span className="stat-text">Critical Cases</span>
+            </div>
+          </div>
+
+          {admissions.length === 0 ? (
+            <p className="no-data">No current admissions</p>
+          ) : (
+            <Table columns={columns} data={admissions} />
+          )}
+        </>
+      )}
     </div>
   );
 };

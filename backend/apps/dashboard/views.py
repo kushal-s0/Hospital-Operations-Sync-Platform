@@ -2,8 +2,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from django.utils import timezone
 from django.db import models
-from apps.authentication.models import Bed, Department, Admission, InventoryItem
-from apps.opd.models import OPDQueue
+from apps.authentication.models import Bed, Department, Admission, InventoryItem, Visit
 
 
 class DashboardSummaryView(APIView):
@@ -19,12 +18,16 @@ class DashboardSummaryView(APIView):
         occupied_beds = Bed.objects.filter(status='Occupied').count()
         occupancy_rate = round((occupied_beds / total_beds * 100), 2) if total_beds > 0 else 0
         
-        # OPD metrics
-        total_opd_today = OPDQueue.objects.filter(created_at__date=today).count()
-        waiting_patients = OPDQueue.objects.filter(
-            created_at__date=today,
-            status='waiting'
-        ).count()
+        # OPD metrics - using Visit model (maps to visits table)
+        try:
+            total_opd_today = Visit.objects.filter(visit_datetime__date=today).count()
+            waiting_patients = Visit.objects.filter(
+                visit_datetime__date=today,
+                patient_outcome__isnull=True
+            ).count()
+        except Exception:
+            total_opd_today = 0
+            waiting_patients = 0
         
         # Admission metrics
         current_admissions = Admission.objects.filter(status='Active').count()

@@ -1,39 +1,65 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { StatusBadge } from '../../components/Common';
+import { bedsAPI } from '../../services/api';
 import './BedManagement.css';
 
 const BedManagement = () => {
   const [selectedDepartment, setSelectedDepartment] = useState('all');
+  const [beds, setBeds] = useState([]);
+  const [departments, setDepartments] = useState([{ id: 'all', name: 'All Departments' }]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        const [bedsResponse, occupancyResponse] = await Promise.all([
+          bedsAPI.getAll(),
+          bedsAPI.getOccupancySummary()
+        ]);
+        
+        // Handle paginated response - data may be in .results or directly in .data
+        const responseData = bedsResponse.data;
+        const bedsData = Array.isArray(responseData) 
+          ? responseData 
+          : (responseData.results || []);
+        setBeds(bedsData);
+        
+        // Build departments list from occupancy summary
+        const deptList = [{ id: 'all', name: 'All Departments' }];
+        const deptData = Array.isArray(occupancyResponse.data) 
+          ? occupancyResponse.data 
+          : (occupancyResponse.data.results || []);
+        deptData.forEach(dept => {
+          deptList.push({ id: dept.department, name: dept.department });
+        });
+        setDepartments(deptList);
+      } catch (err) {
+        console.error('Failed to fetch beds data:', err);
+        setError('Failed to load bed data. Please try again.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  // Ensure beds is always an array
+  const bedsArray = Array.isArray(beds) ? beds : [];
   
-  const departments = [
-    { id: 'all', name: 'All Departments' },
-    { id: 'general', name: 'General Medicine' },
-    { id: 'icu', name: 'ICU' },
-    { id: 'surgery', name: 'Surgery' },
-    { id: 'pediatrics', name: 'Pediatrics' },
-    { id: 'maternity', name: 'Maternity' },
-  ];
-
-  const beds = [
-    { id: 1, bed_number: 'GM-101', department: 'General Medicine', bed_type: 'general', status: 'available', room_number: 'R101', floor: 1 },
-    { id: 2, bed_number: 'GM-102', department: 'General Medicine', bed_type: 'general', status: 'occupied', room_number: 'R101', floor: 1, patient_name: 'John Doe' },
-    { id: 3, bed_number: 'ICU-001', department: 'ICU', bed_type: 'icu', status: 'occupied', room_number: 'ICU-1', floor: 2, patient_name: 'Jane Smith' },
-    { id: 4, bed_number: 'ICU-002', department: 'ICU', bed_type: 'icu', status: 'available', room_number: 'ICU-1', floor: 2 },
-    { id: 5, bed_number: 'SRG-101', department: 'Surgery', bed_type: 'private', status: 'maintenance', room_number: 'S101', floor: 3 },
-    { id: 6, bed_number: 'PED-101', department: 'Pediatrics', bed_type: 'pediatric', status: 'reserved', room_number: 'P101', floor: 1 },
-    { id: 7, bed_number: 'MAT-101', department: 'Maternity', bed_type: 'maternity', status: 'available', room_number: 'M101', floor: 1 },
-    { id: 8, bed_number: 'GM-103', department: 'General Medicine', bed_type: 'semi_private', status: 'occupied', room_number: 'R102', floor: 1, patient_name: 'Mike Wilson' },
-  ];
-
   const filteredBeds = selectedDepartment === 'all' 
-    ? beds 
-    : beds.filter(bed => bed.department.toLowerCase().includes(selectedDepartment));
+    ? bedsArray 
+    : bedsArray.filter(bed => bed.department_name === selectedDepartment);
 
   const stats = {
-    total: beds.length,
-    available: beds.filter(b => b.status === 'available').length,
-    occupied: beds.filter(b => b.status === 'occupied').length,
-    maintenance: beds.filter(b => b.status === 'maintenance').length,
+    total: bedsArray.length,
+    available: bedsArray.filter(b => b.status === 'Available').length,
+    occupied: bedsArray.filter(b => b.status === 'Occupied').length,
+    maintenance: bedsArray.filter(b => b.status === 'Maintenance').length,
   };
 
   return (
@@ -45,56 +71,62 @@ const BedManagement = () => {
         </div>
       </div>
 
-      <div className="bed-stats">
-        <div className="stat-card total">
-          <span className="stat-value">{stats.total}</span>
-          <span className="stat-label">Total Beds</span>
-        </div>
-        <div className="stat-card available">
-          <span className="stat-value">{stats.available}</span>
-          <span className="stat-label">Available</span>
-        </div>
-        <div className="stat-card occupied">
-          <span className="stat-value">{stats.occupied}</span>
-          <span className="stat-label">Occupied</span>
-        </div>
-        <div className="stat-card maintenance">
-          <span className="stat-value">{stats.maintenance}</span>
-          <span className="stat-label">Maintenance</span>
-        </div>
-      </div>
+      {loading && <div className="loading">Loading bed data...</div>}
+      {error && <div className="error-message">{error}</div>}
 
-      <div className="filter-section">
-        <label>Filter by Department:</label>
-        <select 
-          value={selectedDepartment} 
-          onChange={(e) => setSelectedDepartment(e.target.value)}
-        >
-          {departments.map(dept => (
-            <option key={dept.id} value={dept.id}>{dept.name}</option>
-          ))}
-        </select>
-      </div>
-
-      <div className="beds-grid">
-        {filteredBeds.map(bed => (
-          <div key={bed.id} className={`bed-card bed-${bed.status}`}>
-            <div className="bed-header">
-              <span className="bed-number">{bed.bed_number}</span>
-              <StatusBadge status={bed.status} />
+      {!loading && !error && (
+        <>
+          <div className="bed-stats">
+            <div className="stat-card total">
+              <span className="stat-value">{stats.total}</span>
+              <span className="stat-label">Total Beds</span>
             </div>
-            <div className="bed-info">
-              <p><strong>Department:</strong> {bed.department}</p>
-              <p><strong>Type:</strong> {bed.bed_type.replace('_', ' ')}</p>
-              <p><strong>Room:</strong> {bed.room_number}</p>
-              <p><strong>Floor:</strong> {bed.floor}</p>
-              {bed.patient_name && (
-                <p><strong>Patient:</strong> {bed.patient_name}</p>
-              )}
+            <div className="stat-card available">
+              <span className="stat-value">{stats.available}</span>
+              <span className="stat-label">Available</span>
+            </div>
+            <div className="stat-card occupied">
+              <span className="stat-value">{stats.occupied}</span>
+              <span className="stat-label">Occupied</span>
+            </div>
+            <div className="stat-card maintenance">
+              <span className="stat-value">{stats.maintenance}</span>
+              <span className="stat-label">Maintenance</span>
             </div>
           </div>
-        ))}
-      </div>
+
+          <div className="filter-section">
+            <label>Filter by Department:</label>
+            <select 
+              value={selectedDepartment} 
+              onChange={(e) => setSelectedDepartment(e.target.value)}
+            >
+              {departments.map(dept => (
+                <option key={dept.id} value={dept.id}>{dept.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="beds-grid">
+            {filteredBeds.length === 0 ? (
+              <p className="no-data">No beds found</p>
+            ) : (
+              filteredBeds.map(bed => (
+                <div key={bed.bed_id} className={`bed-card bed-${bed.status.toLowerCase()}`}>
+                  <div className="bed-header">
+                    <span className="bed-number">Bed #{bed.bed_id}</span>
+                    <StatusBadge status={bed.status.toLowerCase()} />
+                  </div>
+                  <div className="bed-info">
+                    <p><strong>Department:</strong> {bed.department_name}</p>
+                    <p><strong>Type:</strong> {bed.bed_type}</p>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 };

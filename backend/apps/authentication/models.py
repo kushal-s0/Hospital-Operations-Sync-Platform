@@ -35,6 +35,8 @@ class Department(models.Model):
 
 
 class StaffUser(models.Model):
+    """Custom user model that maps to MySQL staff_users table."""
+    
     ROLE_CHOICES = [
         ('Doctor', 'Doctor'),
         ('Nurse', 'Nurse'),
@@ -69,6 +71,16 @@ class StaffUser(models.Model):
     def check_password(self, raw_password):
         """Check if the provided password matches the stored hash"""
         return check_password(raw_password, self.password_hash)
+
+    @property
+    def is_authenticated(self):
+        """Always return True for authenticated users (required by DRF)."""
+        return True
+    
+    @property
+    def is_anonymous(self):
+        """Always return False (required by DRF)."""
+        return False
 
     @property
     def full_name(self):

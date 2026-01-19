@@ -1,49 +1,62 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Table, StatusBadge } from '../../components/Common';
+import { inventoryAPI } from '../../services/api';
 import './Inventory.css';
 
 const Inventory = () => {
   const [activeTab, setActiveTab] = useState('all');
-  
-  const inventoryItems = [
-    { id: 1, name: 'Paracetamol 500mg', sku: 'MED-001', category: 'Medicine', item_type: 'medicine', current_stock: 500, minimum_stock: 100, unit: 'tablets', unit_price: 2.50, expiry_date: '2027-06-15', is_low_stock: false },
-    { id: 2, name: 'Surgical Gloves (L)', sku: 'SUP-001', category: 'Consumable', item_type: 'consumable', current_stock: 50, minimum_stock: 100, unit: 'boxes', unit_price: 15.00, expiry_date: '2026-12-01', is_low_stock: true },
-    { id: 3, name: 'IV Cannula 20G', sku: 'SUP-002', category: 'Consumable', item_type: 'consumable', current_stock: 200, minimum_stock: 150, unit: 'pieces', unit_price: 5.00, expiry_date: '2027-03-20', is_low_stock: false },
-    { id: 4, name: 'Amoxicillin 250mg', sku: 'MED-002', category: 'Medicine', item_type: 'medicine', current_stock: 30, minimum_stock: 50, unit: 'capsules', unit_price: 8.00, expiry_date: '2026-02-10', is_low_stock: true },
-    { id: 5, name: 'Oxygen Mask', sku: 'EQP-001', category: 'Equipment', item_type: 'equipment', current_stock: 75, minimum_stock: 30, unit: 'pieces', unit_price: 25.00, expiry_date: null, is_low_stock: false },
-    { id: 6, name: 'Surgical Sutures', sku: 'SUR-001', category: 'Surgical', item_type: 'surgical', current_stock: 15, minimum_stock: 25, unit: 'packs', unit_price: 45.00, expiry_date: '2026-08-15', is_low_stock: true },
-  ];
+  const [inventoryItems, setInventoryItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
+  useEffect(() => {
+    const fetchInventory = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const response = await inventoryAPI.getItems();
+        // Handle paginated response - data may be in .results or directly in .data
+        const responseData = response.data;
+        const items = Array.isArray(responseData) 
+          ? responseData 
+          : (responseData.results || []);
+        setInventoryItems(items);
+      } catch (err) {
+        console.error('Failed to fetch inventory:', err);
+        setError('Failed to load inventory data. Please try again.');
+        setInventoryItems([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchInventory();
+  }, []);
+
+  // Ensure inventoryItems is always an array
+  const itemsArray = Array.isArray(inventoryItems) ? inventoryItems : [];
+  
   const filteredItems = activeTab === 'all' 
-    ? inventoryItems 
+    ? itemsArray 
     : activeTab === 'low_stock' 
-      ? inventoryItems.filter(item => item.is_low_stock)
-      : inventoryItems.filter(item => item.item_type === activeTab);
+      ? itemsArray.filter(item => item.is_low_stock)
+      : itemsArray.filter(item => item.category?.toLowerCase() === activeTab);
 
   const columns = [
-    { key: 'sku', label: 'SKU' },
-    { key: 'name', label: 'Item Name' },
+    { key: 'item_id', label: 'ID' },
+    { key: 'item_name', label: 'Item Name' },
     { key: 'category', label: 'Category' },
     { 
-      key: 'current_stock', 
+      key: 'quantity_available', 
       label: 'Stock',
       render: (row) => (
         <span className={row.is_low_stock ? 'stock-low' : 'stock-ok'}>
-          {row.current_stock} {row.unit}
+          {row.quantity_available}
         </span>
       )
     },
-    { key: 'minimum_stock', label: 'Min Stock' },
-    { 
-      key: 'unit_price', 
-      label: 'Unit Price',
-      render: (row) => `$${row.unit_price.toFixed(2)}`
-    },
-    { 
-      key: 'expiry_date', 
-      label: 'Expiry Date',
-      render: (row) => row.expiry_date || 'N/A'
-    },
+    { key: 'reorder_level', label: 'Reorder Level' },
+    { key: 'supplier', label: 'Supplier' },
     { 
       key: 'status', 
       label: 'Status',
@@ -63,15 +76,8 @@ const Inventory = () => {
   ];
 
   const stats = {
-    total: inventoryItems.length,
-    lowStock: inventoryItems.filter(i => i.is_low_stock).length,
-    expiringSoon: inventoryItems.filter(i => {
-      if (!i.expiry_date) return false;
-      const expiry = new Date(i.expiry_date);
-      const threshold = new Date();
-      threshold.setDate(threshold.getDate() + 30);
-      return expiry <= threshold;
-    }).length,
+    total: itemsArray.length,
+    lowStock: itemsArray.filter(i => i.is_low_stock).length,
   };
 
   return (
@@ -84,55 +90,44 @@ const Inventory = () => {
         <button className="btn btn-primary">+ Add Item</button>
       </div>
 
-      <div className="inventory-stats">
-        <div className="stat-card">
-          <span className="stat-value">{stats.total}</span>
-          <span className="stat-label">Total Items</span>
-        </div>
-        <div className="stat-card warning">
-          <span className="stat-value">{stats.lowStock}</span>
-          <span className="stat-label">Low Stock Items</span>
-        </div>
-        <div className="stat-card danger">
-          <span className="stat-value">{stats.expiringSoon}</span>
-          <span className="stat-label">Expiring Soon</span>
-        </div>
-      </div>
+      {loading && <div className="loading">Loading inventory...</div>}
+      {error && <div className="error-message">{error}</div>}
 
-      <div className="inventory-tabs">
-        <button 
-          className={`tab ${activeTab === 'all' ? 'active' : ''}`}
-          onClick={() => setActiveTab('all')}
-        >
-          All Items
-        </button>
-        <button 
-          className={`tab ${activeTab === 'low_stock' ? 'active' : ''}`}
-          onClick={() => setActiveTab('low_stock')}
-        >
-          Low Stock ⚠️
-        </button>
-        <button 
-          className={`tab ${activeTab === 'medicine' ? 'active' : ''}`}
-          onClick={() => setActiveTab('medicine')}
-        >
-          Medicines
-        </button>
-        <button 
-          className={`tab ${activeTab === 'consumable' ? 'active' : ''}`}
-          onClick={() => setActiveTab('consumable')}
-        >
-          Consumables
-        </button>
-        <button 
-          className={`tab ${activeTab === 'surgical' ? 'active' : ''}`}
-          onClick={() => setActiveTab('surgical')}
-        >
-          Surgical
-        </button>
-      </div>
+      {!loading && !error && (
+        <>
+          <div className="inventory-stats">
+            <div className="stat-card">
+              <span className="stat-value">{stats.total}</span>
+              <span className="stat-label">Total Items</span>
+            </div>
+            <div className="stat-card warning">
+              <span className="stat-value">{stats.lowStock}</span>
+              <span className="stat-label">Low Stock Items</span>
+            </div>
+          </div>
 
-      <Table columns={columns} data={filteredItems} />
+          <div className="inventory-tabs">
+            <button 
+              className={`tab ${activeTab === 'all' ? 'active' : ''}`}
+              onClick={() => setActiveTab('all')}
+            >
+              All Items
+            </button>
+            <button 
+              className={`tab ${activeTab === 'low_stock' ? 'active' : ''}`}
+              onClick={() => setActiveTab('low_stock')}
+            >
+              Low Stock ⚠️
+            </button>
+          </div>
+
+          {filteredItems.length === 0 ? (
+            <p className="no-data">No inventory items found</p>
+          ) : (
+            <Table columns={columns} data={filteredItems} />
+          )}
+        </>
+      )}
     </div>
   );
 };
