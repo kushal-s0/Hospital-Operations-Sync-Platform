@@ -4,7 +4,7 @@ import './Sidebar.css';
 
 const Sidebar = () => {
   const menuItems = [
-    { path: '/', label: 'Dashboard', icon: '📊' },
+    { path: '/dashboard', label: 'Dashboard', icon: '📊' },
     { path: '/opd', label: 'OPD Queue', icon: '🎫' },
     { path: '/beds', label: 'Bed Management', icon: '🛏️' },
     { path: '/admissions', label: 'Admissions', icon: '📋' },

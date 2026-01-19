@@ -36,7 +36,7 @@ const Login = () => {
       localStorage.setItem('user', JSON.stringify(response.user));
       
       // Redirect to dashboard
-      navigate('/');
+      navigate('/dashboard');
     } catch (err) {
       setError(err.response?.data?.error || 'Login failed. Please try again.');
     } finally {

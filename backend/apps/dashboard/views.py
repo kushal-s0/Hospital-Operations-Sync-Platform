@@ -2,10 +2,8 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from django.utils import timezone
 from django.db import models
-from apps.beds.models import Bed, Department
+from apps.authentication.models import Bed, Department, Admission, InventoryItem
 from apps.opd.models import OPDQueue
-from apps.admissions.models import Admission
-from apps.inventory.models import InventoryItem
 
 
 class DashboardSummaryView(APIView):
@@ -17,8 +15,8 @@ class DashboardSummaryView(APIView):
         
         # Bed metrics
         total_beds = Bed.objects.count()
-        available_beds = Bed.objects.filter(status='available').count()
-        occupied_beds = Bed.objects.filter(status='occupied').count()
+        available_beds = Bed.objects.filter(status='Available').count()
+        occupied_beds = Bed.objects.filter(status='Occupied').count()
         occupancy_rate = round((occupied_beds / total_beds * 100), 2) if total_beds > 0 else 0
         
         # OPD metrics
@@ -29,11 +27,11 @@ class DashboardSummaryView(APIView):
         ).count()
         
         # Admission metrics
-        current_admissions = Admission.objects.filter(status='admitted').count()
+        current_admissions = Admission.objects.filter(status='Active').count()
         
         # Inventory metrics
         low_stock_items = InventoryItem.objects.filter(
-            current_stock__lte=models.F('minimum_stock')
+            quantity_available__lte=models.F('reorder_level')
         ).count()
         
         return Response({
@@ -57,13 +55,14 @@ class DepartmentSummaryView(APIView):
         summary = []
         
         for dept in departments:
-            total = dept.beds.count()
-            available = dept.beds.filter(status='available').count()
-            occupied = dept.beds.filter(status='occupied').count()
+            beds = Bed.objects.filter(department=dept)
+            total = beds.count()
+            available = beds.filter(status='Available').count()
+            occupied = beds.filter(status='Occupied').count()
             
             summary.append({
-                'department': dept.name,
-                'floor': dept.floor,
+                'department': dept.department_name,
+                'department_id': dept.department_id,
                 'total_beds': total,
                 'available': available,
                 'occupied': occupied,
@@ -71,3 +70,4 @@ class DepartmentSummaryView(APIView):
             })
         
         return Response(summary)
+

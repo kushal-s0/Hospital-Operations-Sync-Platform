@@ -1,5 +1,6 @@
 from rest_framework import serializers
-from .models import Admission, AdmissionRule
+from apps.authentication.models import Admission
+from .models import AdmissionRule
 from apps.patients.serializers import PatientSerializer
 from apps.beds.serializers import BedSerializer
 
@@ -8,14 +9,23 @@ class AdmissionSerializer(serializers.ModelSerializer):
     """Serializer for Admission model."""
     
     patient_name = serializers.SerializerMethodField()
-    bed_number = serializers.CharField(source='bed.bed_number', read_only=True)
+    bed_info = serializers.SerializerMethodField()
     
     class Meta:
         model = Admission
-        fields = '__all__'
+        fields = ['admission_id', 'patient', 'patient_name', 'bed', 'bed_info', 
+                  'doctor', 'admission_time', 'discharge_time', 'condition_level', 
+                  'status', 'created_at', 'updated_at', 'admin_id']
     
     def get_patient_name(self, obj):
-        return f"{obj.patient.first_name} {obj.patient.last_name}"
+        if obj.patient:
+            return f"{obj.patient.first_name} {obj.patient.last_name}"
+        return None
+    
+    def get_bed_info(self, obj):
+        if obj.bed:
+            return f"Bed {obj.bed.bed_id}"
+        return None
 
 
 class AdmissionRuleSerializer(serializers.ModelSerializer):

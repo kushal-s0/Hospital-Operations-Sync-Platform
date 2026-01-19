@@ -2,9 +2,9 @@ from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.utils import timezone
-from .models import Admission, AdmissionRule
+from apps.authentication.models import Admission, Bed
+from .models import AdmissionRule
 from .serializers import AdmissionSerializer, AdmissionRuleSerializer
-from apps.beds.models import Bed
 
 
 class AdmissionViewSet(viewsets.ModelViewSet):
@@ -16,7 +16,7 @@ class AdmissionViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'])
     def current(self, request):
         """Get all current admissions."""
-        current_admissions = Admission.objects.filter(status='admitted')
+        current_admissions = Admission.objects.filter(status='Active')
         serializer = self.get_serializer(current_admissions, many=True)
         return Response(serializer.data)
     
@@ -24,13 +24,13 @@ class AdmissionViewSet(viewsets.ModelViewSet):
     def discharge(self, request, pk=None):
         """Discharge a patient."""
         admission = self.get_object()
-        admission.status = 'discharged'
-        admission.discharge_date = timezone.now()
+        admission.status = 'Discharged'
+        admission.discharge_time = timezone.now()
         admission.save()
         
         # Free up the bed
         if admission.bed:
-            admission.bed.status = 'available'
+            admission.bed.status = 'Available'
             admission.bed.save()
         
         return Response({'status': 'patient discharged'})
@@ -44,7 +44,7 @@ class AdmissionViewSet(viewsets.ModelViewSet):
         rules = AdmissionRule.objects.filter(is_active=True)
         
         # Find matching beds based on rules
-        recommended_beds = Bed.objects.filter(status='available')
+        recommended_beds = Bed.objects.filter(status='Available')
         
         # Apply rule-based filtering (simplified)
         bed_type = patient_requirements.get('bed_type')

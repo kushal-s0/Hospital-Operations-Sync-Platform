@@ -33,7 +33,10 @@ CREATE TABLE `admissions` (
   `status` enum('Active','Discharged') DEFAULT NULL,
   `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
   `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`admission_id`),
+`admin_id` int DEFAULT NULL,
+`updated_timestamp` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  
+PRIMARY KEY (`admission_id`),
   KEY `patient_id` (`patient_id`),
   KEY `bed_id` (`bed_id`),
   KEY `doctor_id` (`doctor_id`),
@@ -70,7 +73,10 @@ CREATE TABLE `appointments` (
   `status` enum('Scheduled','Completed','Cancelled') DEFAULT NULL,
   `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
   `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`appointment_id`),
+`admin_id` int DEFAULT NULL,
+`updated_timestamp` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  
+PRIMARY KEY (`appointment_id`),
   KEY `patient_id` (`patient_id`),
   KEY `doctor_id` (`doctor_id`),
   KEY `visit_id` (`visit_id`),
@@ -104,7 +110,10 @@ CREATE TABLE `beds` (
   `status` enum('Available','Occupied','Maintenance') DEFAULT NULL,
   `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
   `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`bed_id`),
+`admin_id` int DEFAULT NULL,
+`updated_timestamp` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  
+PRIMARY KEY (`bed_id`),
   KEY `hospital_id` (`hospital_id`),
   KEY `department_id` (`department_id`),
   CONSTRAINT `beds_ibfk_1` FOREIGN KEY (`hospital_id`) REFERENCES `hospitals` (`hospital_id`),
@@ -138,7 +147,10 @@ CREATE TABLE `billing` (
   `payment_status` enum('Paid','Pending','Failed') DEFAULT NULL,
   `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
   `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`bill_id`),
+`admin_id` int DEFAULT NULL,
+`updated_timestamp` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  
+PRIMARY KEY (`bill_id`),
   KEY `patient_id` (`patient_id`),
   KEY `treatment_id` (`treatment_id`),
   CONSTRAINT `billing_ibfk_1` FOREIGN KEY (`patient_id`) REFERENCES `patients` (`patient_id`),
@@ -171,7 +183,10 @@ CREATE TABLE `departments` (
   `emergency_beds` int DEFAULT NULL,
   `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
   `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`department_id`),
+`admin_id` int DEFAULT NULL,
+`updated_timestamp` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  
+PRIMARY KEY (`department_id`),
   KEY `hospital_id` (`hospital_id`),
   CONSTRAINT `departments_ibfk_1` FOREIGN KEY (`hospital_id`) REFERENCES `hospitals` (`hospital_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
@@ -197,7 +212,10 @@ CREATE TABLE `doctors` (
   `doctor_id` int NOT NULL,
   `specialization` varchar(100) DEFAULT NULL,
   `years_experience` int DEFAULT NULL,
-  PRIMARY KEY (`doctor_id`),
+`admin_id` int DEFAULT NULL,
+`updated_timestamp` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  
+PRIMARY KEY (`doctor_id`),
   CONSTRAINT `doctors_ibfk_1` FOREIGN KEY (`doctor_id`) REFERENCES `staff_users` (`staff_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -229,7 +247,10 @@ CREATE TABLE `financial_transactions` (
   `description` text,
   `transaction_date` datetime DEFAULT NULL,
   `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`transaction_id`),
+`admin_id` int DEFAULT NULL,
+`updated_timestamp` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  
+PRIMARY KEY (`transaction_id`),
   KEY `hospital_id` (`hospital_id`),
   CONSTRAINT `financial_transactions_ibfk_1` FOREIGN KEY (`hospital_id`) REFERENCES `hospitals` (`hospital_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
@@ -258,7 +279,10 @@ CREATE TABLE `hospitals` (
   `facility_size_beds` int DEFAULT NULL,
   `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
   `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`hospital_id`)
+`admin_id` int DEFAULT NULL,
+`updated_timestamp` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  
+PRIMARY KEY (`hospital_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -287,7 +311,10 @@ CREATE TABLE `inventory_items` (
   `supplier` varchar(150) DEFAULT NULL,
   `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
   `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`item_id`)
+`admin_id` int DEFAULT NULL,
+`updated_timestamp` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  
+PRIMARY KEY (`item_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -315,7 +342,10 @@ CREATE TABLE `inventory_usage` (
   `usage_date` datetime DEFAULT NULL,
   `department` varchar(100) DEFAULT NULL,
   `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`usage_id`),
+`admin_id` int DEFAULT NULL,
+`updated_timestamp` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  
+PRIMARY KEY (`usage_id`),
   KEY `item_id` (`item_id`),
   KEY `patient_id` (`patient_id`),
   CONSTRAINT `inventory_usage_ibfk_1` FOREIGN KEY (`item_id`) REFERENCES `inventory_items` (`item_id`),
@@ -353,7 +383,10 @@ CREATE TABLE `patients` (
   `email` varchar(120) DEFAULT NULL,
   `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
   `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`patient_id`)
+`admin_id` int DEFAULT NULL,
+`updated_timestamp` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  
+PRIMARY KEY (`patient_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -386,7 +419,10 @@ CREATE TABLE `staff_users` (
   `is_active` tinyint(1) DEFAULT '1',
   `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
   `last_login` datetime DEFAULT NULL,
-  PRIMARY KEY (`staff_id`),
+`admin_id` int DEFAULT NULL,
+`updated_timestamp` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  
+PRIMARY KEY (`staff_id`),
   UNIQUE KEY `email` (`email`),
   KEY `hospital_id` (`hospital_id`),
   KEY `department_id` (`department_id`),
@@ -420,7 +456,10 @@ CREATE TABLE `treatments` (
   `treatment_date` date DEFAULT NULL,
   `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
   `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`treatment_id`),
+`admin_id` int DEFAULT NULL,
+`updated_timestamp` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  
+PRIMARY KEY (`treatment_id`),
   KEY `appointment_id` (`appointment_id`),
   CONSTRAINT `treatments_ibfk_1` FOREIGN KEY (`appointment_id`) REFERENCES `appointments` (`appointment_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
@@ -462,7 +501,10 @@ CREATE TABLE `visits` (
   `patient_satisfaction` int DEFAULT NULL,
   `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
   `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`visit_id`),
+`admin_id` int DEFAULT NULL,
+`updated_timestamp` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  
+PRIMARY KEY (`visit_id`),
   KEY `patient_id` (`patient_id`),
   KEY `hospital_id` (`hospital_id`),
   KEY `department_id` (`department_id`),
@@ -491,3 +533,45 @@ UNLOCK TABLES;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
 -- Dump completed on 2026-01-19 12:34:34
+
+
+--
+-- Table structure for table `audit_log`
+--
+
+DROP TABLE IF EXISTS `audit_log`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `audit_log` (
+  `audit_id` int NOT NULL AUTO_INCREMENT,
+  `table_name` varchar(100) NOT NULL,
+  `record_id` int NOT NULL,
+  `operation_type` enum('INSERT','UPDATE','DELETE') NOT NULL,
+  `admin_id` int DEFAULT NULL,
+  `admin_name` varchar(200) DEFAULT NULL,
+  `admin_role` varchar(50) DEFAULT NULL,
+  `old_values` json DEFAULT NULL,
+  `new_values` json DEFAULT NULL,
+  `changed_fields` text,
+  `ip_address` varchar(45) DEFAULT NULL,
+  `user_agent` varchar(255) DEFAULT NULL,
+  `timestamp` datetime DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`audit_id`),
+  KEY `table_name` (`table_name`),
+  KEY `record_id` (`record_id`),
+  KEY `admin_id` (`admin_id`),
+  KEY `timestamp` (`timestamp`),
+  KEY `operation_type` (`operation_type`),
+  CONSTRAINT `audit_log_ibfk_1` FOREIGN KEY (`admin_id`) REFERENCES `staff_users` (`staff_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `audit_log`
+--
+
+LOCK TABLES `audit_log` WRITE;
+/*!40000 ALTER TABLE `audit_log` DISABLE KEYS */;
+/*!40000 ALTER TABLE `audit_log` ENABLE KEYS */;
+UNLOCK TABLES;
+

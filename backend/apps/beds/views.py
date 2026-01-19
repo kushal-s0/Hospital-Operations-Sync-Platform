@@ -1,7 +1,7 @@
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from .models import Department, Bed
+from apps.authentication.models import Department, Bed
 from .serializers import DepartmentSerializer, BedSerializer
 
 
@@ -21,7 +21,7 @@ class BedViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'])
     def available(self, request):
         """Get all available beds."""
-        available_beds = Bed.objects.filter(status='available')
+        available_beds = Bed.objects.filter(status='Available')
         serializer = self.get_serializer(available_beds, many=True)
         return Response(serializer.data)
     
@@ -31,14 +31,16 @@ class BedViewSet(viewsets.ModelViewSet):
         departments = Department.objects.all()
         summary = []
         for dept in departments:
-            total = dept.beds.count()
-            available = dept.beds.filter(status='available').count()
-            occupied = dept.beds.filter(status='occupied').count()
+            beds = Bed.objects.filter(department=dept)
+            total = beds.count()
+            available = beds.filter(status='Available').count()
+            occupied = beds.filter(status='Occupied').count()
             summary.append({
-                'department': dept.name,
+                'department': dept.department_name,
                 'total_beds': total,
                 'available': available,
                 'occupied': occupied,
                 'occupancy_rate': round((occupied / total * 100), 2) if total > 0 else 0
             })
         return Response(summary)
+
