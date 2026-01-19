@@ -35,8 +35,13 @@ const Login = () => {
       localStorage.setItem('refresh_token', response.refresh);
       localStorage.setItem('user', JSON.stringify(response.user));
       
-      // Redirect to dashboard
-      navigate('/dashboard');
+      // Redirect based on user role
+      const userRole = response.user?.role;
+      if (userRole === 'Receptionist') {
+        navigate('/receptionist');
+      } else {
+        navigate('/dashboard');
+      }
     } catch (err) {
       setError(err.response?.data?.error || 'Login failed. Please try again.');
     } finally {
