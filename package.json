@@ -1,0 +1,22 @@
+{
+  "name": "his-rubix-root",
+  "version": "1.0.0",
+  "description": "Hospital Information System - Root Package",
+  "scripts": {
+    "start": "concurrently \"npm run backend\" \"npm run frontend\" --names \"BACKEND,FRONTEND\" --prefix-colors \"blue,green\"",
+    "backend": "cd backend && python manage.py runserver",
+    "frontend": "cd frontend && npm start",
+    "frontend:3001": "cd frontend && npm run start:3001",
+    "frontend:3002": "cd frontend && npm run start:3002",
+    "install:backend": "cd backend && pip install -r requirements.txt",
+    "install:frontend": "cd frontend && npm install",
+    "install:all": "npm run install:backend && npm run install:frontend && npm install",
+    "setup:db": "cd backend && python manage.py migrate && python create_test_users.py",
+    "setup": "npm run install:all && npm run setup:db",
+    "check:users": "cd backend && python list_users.py",
+    "check:login": "cd backend && python check_login.py"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
