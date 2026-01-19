@@ -1,0 +1,108 @@
+.bed-management {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.bed-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.stat-card {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  border-left: 4px solid;
+}
+
+.stat-card.total { border-left-color: #1e3c72; }
+.stat-card.available { border-left-color: #16a34a; }
+.stat-card.occupied { border-left-color: #ea580c; }
+.stat-card.maintenance { border-left-color: #dc2626; }
+
+.stat-card .stat-value {
+  display: block;
+  font-size: 2rem;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.stat-card .stat-label {
+  font-size: 0.85rem;
+  color: #64748b;
+}
+
+.filter-section {
+  background: white;
+  padding: 16px;
+  border-radius: 12px;
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.filter-section label {
+  font-weight: 500;
+  color: #334155;
+}
+
+.filter-section select {
+  padding: 8px 16px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 0.9rem;
+}
+
+.beds-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.bed-card {
+  background: white;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  border-left: 4px solid;
+  transition: transform 0.3s;
+}
+
+.bed-card:hover {
+  transform: translateY(-2px);
+}
+
+.bed-available { border-left-color: #16a34a; }
+.bed-occupied { border-left-color: #ea580c; }
+.bed-maintenance { border-left-color: #dc2626; }
+.bed-reserved { border-left-color: #2563eb; }
+
+.bed-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.bed-number {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.bed-info p {
+  font-size: 0.85rem;
+  color: #64748b;
+  margin-bottom: 6px;
+}
+
+.bed-info strong {
+  color: #475569;
+}
