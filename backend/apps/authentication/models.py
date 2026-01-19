@@ -70,8 +70,6 @@ class StaffUser(models.Model):
         
     def check_password(self, raw_password):
         """Check if the provided password matches the stored hash"""
-        if self.password_hash is None or self.password_hash == '':
-            return False
         return check_password(raw_password, self.password_hash)
 
     @property
