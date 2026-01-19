@@ -1,5 +1,6 @@
 from django.contrib import admin
-from .models import InventoryCategory, InventoryItem, InventoryTransaction
+from apps.authentication.models import InventoryItem
+from .models import InventoryCategory, InventoryTransaction
 
 @admin.register(InventoryCategory)
 class InventoryCategoryAdmin(admin.ModelAdmin):
@@ -8,9 +9,9 @@ class InventoryCategoryAdmin(admin.ModelAdmin):
 
 @admin.register(InventoryItem)
 class InventoryItemAdmin(admin.ModelAdmin):
-    list_display = ['name', 'sku', 'item_type', 'current_stock', 'minimum_stock', 'is_low_stock']
-    list_filter = ['item_type', 'category']
-    search_fields = ['name', 'sku']
+    list_display = ['item_id', 'item_name', 'category', 'quantity_available', 'reorder_level', 'supplier']
+    list_filter = ['category']
+    search_fields = ['item_name']
 
 @admin.register(InventoryTransaction)
 class InventoryTransactionAdmin(admin.ModelAdmin):

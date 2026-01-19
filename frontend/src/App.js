@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/Layout/Layout';
 import PrivateRoute from './components/PrivateRoute/PrivateRoute';
+import Landing from './pages/Landing/Landing';
 import Login from './pages/Login/Login';
 import Dashboard from './pages/Dashboard/Dashboard';
 import OPDQueue from './pages/OPD/OPDQueue';
@@ -16,16 +17,19 @@ function App() {
   return (
     <Router>
       <Routes>
+        {/* Public route - Landing Page */}
+        <Route path="/" element={<Landing />} />
+        
         {/* Public route - Login */}
         <Route 
           path="/login" 
           element={
-            isAuthenticated() ? <Navigate to="/" replace /> : <Login />
+            isAuthenticated() ? <Navigate to="/dashboard" replace /> : <Login />
           } 
         />
         
         {/* Protected routes - wrapped in Layout */}
-        <Route path="/" element={
+        <Route path="/dashboard" element={
           <PrivateRoute>
             <Layout>
               <Dashboard />
@@ -73,11 +77,11 @@ function App() {
           </PrivateRoute>
         } />
 
-        {/* Redirect any other routes to dashboard or login */}
+        {/* Redirect any other routes to dashboard or landing */}
         <Route 
           path="*" 
           element={
-            <Navigate to={isAuthenticated() ? "/" : "/login"} replace />
+            <Navigate to={isAuthenticated() ? "/dashboard" : "/"} replace />
           } 
         />
       </Routes>

@@ -1,5 +1,9 @@
 from django.db import models
-from apps.patients.models import Patient
+from apps.authentication.models import Patient, Visit, Appointment
+
+
+# Re-export for backwards compatibility
+__all__ = ['OPDQueue', 'OPDStatistics', 'Visit', 'Appointment']
 
 
 class OPDQueue(models.Model):

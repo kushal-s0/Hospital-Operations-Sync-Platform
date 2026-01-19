@@ -1,5 +1,6 @@
 from rest_framework import serializers
-from .models import InventoryCategory, InventoryItem, InventoryTransaction
+from apps.authentication.models import InventoryItem, InventoryUsage
+from .models import InventoryCategory, InventoryTransaction
 
 
 class InventoryCategorySerializer(serializers.ModelSerializer):
@@ -13,19 +14,37 @@ class InventoryCategorySerializer(serializers.ModelSerializer):
 class InventoryItemSerializer(serializers.ModelSerializer):
     """Serializer for InventoryItem model."""
     
-    category_name = serializers.CharField(source='category.name', read_only=True)
     is_low_stock = serializers.BooleanField(read_only=True)
     
     class Meta:
         model = InventoryItem
-        fields = '__all__'
+        fields = ['item_id', 'item_name', 'category', 'quantity_available', 
+                  'reorder_level', 'supplier', 'is_low_stock', 'created_at', 
+                  'updated_at', 'admin_id']
 
 
 class InventoryTransactionSerializer(serializers.ModelSerializer):
     """Serializer for InventoryTransaction model."""
     
-    item_name = serializers.CharField(source='item.name', read_only=True)
+    item_name = serializers.CharField(source='item.item_name', read_only=True)
     
     class Meta:
         model = InventoryTransaction
         fields = '__all__'
+
+
+class InventoryUsageSerializer(serializers.ModelSerializer):
+    """Serializer for InventoryUsage model."""
+    
+    item_name = serializers.CharField(source='item.item_name', read_only=True)
+    patient_name = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = InventoryUsage
+        fields = ['usage_id', 'item', 'item_name', 'patient', 'patient_name',
+                  'quantity_used', 'usage_date', 'department', 'created_at', 'admin_id']
+    
+    def get_patient_name(self, obj):
+        if obj.patient:
+            return f"{obj.patient.first_name} {obj.patient.last_name}"
+        return None

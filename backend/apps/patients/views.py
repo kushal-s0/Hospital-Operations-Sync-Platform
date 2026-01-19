@@ -1,5 +1,5 @@
 from rest_framework import viewsets
-from .models import Patient
+from apps.authentication.models import Patient
 from .serializers import PatientSerializer
 
 
