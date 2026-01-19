@@ -3,15 +3,16 @@ Django settings for hospital_ops project.
 """
 
 from pathlib import Path
+from decouple import config
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-change-this-in-production'
+SECRET_KEY = config('SECRET_KEY', default='django-insecure-change-this-in-production')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = config('DEBUG', default=True, cast=bool)
 
 ALLOWED_HOSTS = ['localhost', '127.0.0.1']
 
@@ -70,21 +71,20 @@ TEMPLATES = [
 WSGI_APPLICATION = 'hospital_ops.wsgi.application'
 
 # Database
-# TODO: Configure MySQL database
+# MySQL Configuration
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': config('DB_ENGINE', default='django.db.backends.sqlite3'),
+        'NAME': config('DB_NAME', default=str(BASE_DIR / 'db.sqlite3')),
+        'USER': config('DB_USER', default=''),
+        'PASSWORD': config('DB_PASSWORD', default=''),
+        'HOST': config('DB_HOST', default=''),
+        'PORT': config('DB_PORT', default=''),
+        'OPTIONS': {
+            'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+            'charset': 'utf8mb4',
+        } if config('DB_ENGINE', default='').endswith('mysql') else {},
     }
-    # MySQL Configuration (uncomment when ready)
-    # 'default': {
-    #     'ENGINE': 'django.db.backends.mysql',
-    #     'NAME': 'hospital_ops_db',
-    #     'USER': 'your_username',
-    #     'PASSWORD': 'your_password',
-    #     'HOST': 'localhost',
-    #     'PORT': '3306',
-    # }
 }
 
 # Password validation
