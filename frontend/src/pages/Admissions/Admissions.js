@@ -40,10 +40,20 @@ const Admissions = () => {
   }, []);
 
   const handleDischarge = async (admissionId) => {
+    // Ask for confirmation before discharging
+    const confirmed = window.confirm(
+      'Are you sure you want to discharge this patient? The bed will be set to maintenance status.'
+    );
+    
+    if (!confirmed) {
+      return; // User cancelled the discharge
+    }
+
     try {
       await admissionsAPI.discharge(admissionId);
       // Refresh the list after discharge
       fetchAdmissions();
+      alert('Patient discharged successfully. Bed status set to maintenance.');
     } catch (err) {
       console.error('Failed to discharge patient:', err);
       alert('Failed to discharge patient. Please try again.');

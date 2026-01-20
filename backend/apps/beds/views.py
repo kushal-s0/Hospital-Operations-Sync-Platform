@@ -1,7 +1,8 @@
-from rest_framework import viewsets
+from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from apps.authentication.models import Department, Bed
+from rest_framework.exceptions import ValidationError
+from apps.authentication.models import Department, Bed, Admission
 from .serializers import DepartmentSerializer, BedSerializer
 
 
@@ -18,6 +19,44 @@ class BedViewSet(viewsets.ModelViewSet):
     queryset = Bed.objects.all()
     serializer_class = BedSerializer
     pagination_class = None  # Disable pagination to show all beds
+
+    def _check_bed_assignment(self, bed_instance, new_status, old_status):
+        """Check if bed is assigned to an active admission before allowing status change."""
+        # Only check when changing FROM Occupied status
+        if old_status == 'Occupied' and new_status != 'Occupied':
+            # Check if bed is assigned to any active admission
+            active_admission = Admission.objects.filter(
+                bed=bed_instance,
+                status='Active'
+            ).first()
+            
+            if active_admission:
+                raise ValidationError({
+                    'status': f'Cannot change bed status. Bed is currently assigned to patient '
+                             f'{active_admission.patient_name} (Admission #{active_admission.admission_id}). '
+                             f'Please discharge the patient first before changing bed status.'
+                })
+
+    def update(self, request, *args, **kwargs):
+        """Override update to add bed assignment validation."""
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        old_status = instance.status
+        
+        # Check if status is being changed
+        new_status = request.data.get('status')
+        if new_status and new_status != old_status:
+            self._check_bed_assignment(instance, new_status, old_status)
+        
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        return Response(serializer.data)
+
+    def partial_update(self, request, *args, **kwargs):
+        """Override partial_update to add bed assignment validation."""
+        kwargs['partial'] = True
+        return self.update(request, *args, **kwargs)
 
     
     @action(detail=False, methods=['get'])

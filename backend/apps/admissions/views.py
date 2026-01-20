@@ -28,12 +28,12 @@ class AdmissionViewSet(viewsets.ModelViewSet):
         admission.discharge_time = timezone.now()
         admission.save()
         
-        # Free up the bed
+        # Set bed to maintenance status after discharge
         if admission.bed:
-            admission.bed.status = 'Available'
+            admission.bed.status = 'Maintenance'
             admission.bed.save()
         
-        return Response({'status': 'patient discharged'})
+        return Response({'status': 'patient discharged', 'bed_status': 'maintenance'})
     
     @action(detail=False, methods=['post'])
     def match_bed(self, request):

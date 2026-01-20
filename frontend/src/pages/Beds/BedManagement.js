@@ -47,8 +47,7 @@ const BedManagement = () => {
     bed_id: '',
     hospital: '',
     department: '',
-    bed_type: '',
-    status: ''
+    bed_type: ''
   });
   const [updateError, setUpdateError] = useState(null);
   const [updatingBed, setUpdatingBed] = useState(false);
@@ -397,8 +396,7 @@ const BedManagement = () => {
       bed_id: '',
       hospital: '',
       department: '',
-      bed_type: '',
-      status: ''
+      bed_type: ''
     });
     setUpdateError(null);
   };
@@ -409,8 +407,7 @@ const BedManagement = () => {
       bed_id: '',
       hospital: '',
       department: '',
-      bed_type: '',
-      status: ''
+      bed_type: ''
     });
     setUpdateError(null);
   };
@@ -439,8 +436,7 @@ const BedManagement = () => {
           bed_id: bed.bed_id,
           hospital: bed.hospital || '',
           department: bed.department || '',
-          bed_type: bed.bed_type,
-          status: bed.status
+          bed_type: bed.bed_type
         });
       } else {
         setUpdateError(`Bed #${updateFormData.bed_id} not found`);
@@ -468,8 +464,7 @@ const BedManagement = () => {
       await bedsAPI.patch(updateFormData.bed_id, {
         hospital: parseInt(updateFormData.hospital),
         department: parseInt(updateFormData.department),
-        bed_type: updateFormData.bed_type,
-        status: updateFormData.status
+        bed_type: updateFormData.bed_type
       });
 
       handleCloseUpdateModal();
@@ -477,12 +472,22 @@ const BedManagement = () => {
     } catch (err) {
       console.error('Failed to update bed:', err);
       console.error('Error details:', err.response?.data);
-      setUpdateError(
-        err.response?.data?.detail || 
-        err.response?.data?.hospital?.[0] || 
-        err.response?.data?.department?.[0] ||
-        'Failed to update bed. Please try again.'
-      );
+      
+      // Handle validation error for bed assignment
+      let errorMessage = 'Failed to update bed. Please try again. Bed already assigned to a patient. pls disharge the patient first.';
+      
+      if (err.response?.data?.status) {
+        // Status validation error (bed assigned to patient)
+        errorMessage = err.response.data.status;
+      } else if (err.response?.data?.detail) {
+        errorMessage = err.response.data.detail;
+      } else if (err.response?.data?.hospital?.[0]) {
+        errorMessage = err.response.data.hospital[0];
+      } else if (err.response?.data?.department?.[0]) {
+        errorMessage = err.response.data.department[0];
+      }
+      
+      setUpdateError(errorMessage);
     } finally {
       setUpdatingBed(false);
     }
@@ -1036,21 +1041,6 @@ const BedManagement = () => {
                         <option value="ICU">ICU</option>
                         <option value="Ventilator">Ventilator</option>
                         <option value="Emergency">Emergency</option>
-                      </select>
-                    </div>
-
-                    <div className="form-group">
-                      <label htmlFor="update_status">Status <span className="required">*</span></label>
-                      <select
-                        id="update_status"
-                        name="status"
-                        value={updateFormData.status}
-                        onChange={handleUpdateInputChange}
-                        required
-                      >
-                        <option value="Available">Available</option>
-                        <option value="Occupied">Occupied</option>
-                        <option value="Maintenance">Maintenance</option>
                       </select>
                     </div>
                   </>

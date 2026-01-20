@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Card } from '../../components/Common';
+import { BedIcon, PatientIcon, QueueIcon, AdmissionIcon, AlertIcon, CheckCircleIcon, ActivityIcon } from '../../components/Common/Icons';
 import { dashboardAPI } from '../../services/api';
 import './Dashboard.css';
 
@@ -50,13 +51,29 @@ const Dashboard = () => {
 
   return (
     <div className="dashboard">
-      <div className="dashboard-header">
-        <h1>Operational Command View</h1>
-        <p>Real-time hospital operations dashboard</p>
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">Hospital Operations Dashboard</h1>
+          <p className="page-subtitle">Real-time overview of hospital operations and key metrics</p>
+        </div>
+        <div className="header-actions">
+          <span className="last-updated">Last updated: {new Date().toLocaleTimeString()}</span>
+        </div>
       </div>
 
-      {loading && <div className="loading">Loading dashboard data...</div>}
-      {error && <div className="error-message">{error}</div>}
+      {loading && (
+        <div className="loading-state">
+          <div className="loading-spinner"></div>
+          <p>Loading dashboard data...</p>
+        </div>
+      )}
+      
+      {error && (
+        <div className="error-alert">
+          <AlertIcon />
+          <span>{error}</span>
+        </div>
+      )}
 
       {!loading && !error && (
         <>
@@ -64,68 +81,92 @@ const Dashboard = () => {
             <Card
               title="Total Beds"
               value={summary.total_beds}
-              icon="🛏️"
+              icon={<BedIcon />}
               color="blue"
             />
             <Card
               title="Available Beds"
               value={summary.available_beds}
-              icon="✅"
+              icon={<CheckCircleIcon />}
               color="green"
-              subtitle={`${summary.occupancy_rate}% occupancy`}
+              subtitle={`${summary.occupancy_rate}% occupancy rate`}
+              trend={{ direction: 'up', value: '+5%' }}
             />
             <Card
               title="OPD Patients Today"
               value={summary.total_opd_patients_today}
-              icon="🎫"
-              color="orange"
-              subtitle={`${summary.waiting_patients} waiting`}
+              icon={<PatientIcon />}
+              color="teal"
+              subtitle={`${summary.waiting_patients} currently waiting`}
             />
             <Card
-              title="Current Admissions"
+              title="Active Admissions"
               value={summary.current_admissions}
-              icon="📋"
+              icon={<AdmissionIcon />}
               color="blue"
             />
             <Card
-              title="Low Stock Items"
+              title="Low Stock Alerts"
               value={summary.low_stock_items}
-              icon="⚠️"
+              icon={<AlertIcon />}
               color="red"
-              subtitle="Needs attention"
+              subtitle={summary.low_stock_items > 0 ? "Immediate attention required" : "All items stocked"}
+            />
+            <Card
+              title="Queue Status"
+              value={summary.waiting_patients}
+              icon={<ActivityIcon />}
+              color="purple"
+              subtitle="Patients in queue"
             />
           </div>
 
           <div className="dashboard-section">
-            <h2>Department-wise Bed Occupancy</h2>
+            <div className="section-header">
+              <h2 className="section-title">Department-wise Bed Occupancy</h2>
+              <p className="section-subtitle">Real-time bed availability across all departments</p>
+            </div>
+            
             {departmentData.length === 0 ? (
-              <p className="no-data">No department data available</p>
+              <div className="empty-state">
+                <QueueIcon />
+                <p className="empty-state-title">No department data available</p>
+                <p className="empty-state-text">Department statistics will appear here once data is available</p>
+              </div>
             ) : (
               <div className="department-grid">
                 {departmentData.map((dept) => (
                   <div key={dept.department_id || dept.department} className="department-card">
-                    <h3>{dept.department}</h3>
+                    <div className="department-header">
+                      <h3 className="department-name">{dept.department}</h3>
+                      <span className={`occupancy-badge ${dept.occupancy_rate > 80 ? 'high' : dept.occupancy_rate > 50 ? 'medium' : 'low'}`}>
+                        {dept.occupancy_rate}%
+                      </span>
+                    </div>
+                    
                     <div className="department-stats">
-                      <div className="stat">
+                      <div className="stat-item">
                         <span className="stat-value">{dept.total_beds}</span>
-                        <span className="stat-label">Total</span>
+                        <span className="stat-label">Total Beds</span>
                       </div>
-                      <div className="stat">
-                        <span className="stat-value available">{dept.available}</span>
+                      <div className="stat-item stat-available">
+                        <span className="stat-value">{dept.available}</span>
                         <span className="stat-label">Available</span>
                       </div>
-                      <div className="stat">
-                        <span className="stat-value occupied">{dept.occupied}</span>
+                      <div className="stat-item stat-occupied">
+                        <span className="stat-value">{dept.occupied}</span>
                         <span className="stat-label">Occupied</span>
                       </div>
                     </div>
-                    <div className="occupancy-bar">
-                      <div
-                        className="occupancy-fill"
-                        style={{ width: `${dept.occupancy_rate}%` }}
-                      ></div>
+                    
+                    <div className="occupancy-bar-container">
+                      <div className="occupancy-bar">
+                        <div
+                          className={`occupancy-fill ${dept.occupancy_rate > 80 ? 'high' : dept.occupancy_rate > 50 ? 'medium' : 'low'}`}
+                          style={{ width: `${dept.occupancy_rate}%` }}
+                        ></div>
+                      </div>
                     </div>
-                    <span className="occupancy-text">{dept.occupancy_rate}% Occupancy</span>
                   </div>
                 ))}
               </div>
