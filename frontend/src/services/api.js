@@ -153,6 +153,7 @@ export const inventoryAPI = {
   getPrediction: (itemId) => api.get(`/inventory/predict/${itemId}/`),
   getAllAlerts: () => api.get('/inventory/alerts/'),
   getDemandForecast: (days = 7) => api.get(`/inventory/demand-forecast/?days=${days}`),
+  getWeatherPrediction: () => api.get('/inventory/weather-prediction/'),
   getManualPrediction: (itemData) => api.post('/inventory/predict/manual/', { item_data: itemData }),
   
   // ML Predictions (alternative format)

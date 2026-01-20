@@ -155,3 +155,20 @@ SIMPLE_JWT = {
     'USER_ID_FIELD': 'staff_id',  # Use staff_id instead of id
     'USER_ID_CLAIM': 'staff_id',  # Use staff_id in token claims
 }
+
+# =============================================================================
+# WEATHER & AQI PREDICTION SETTINGS
+# =============================================================================
+
+# Hospital Location (for weather/AQI API)
+# Mumbai, Maharashtra coordinates
+HOSPITAL_LOCATION = {
+    'lat': 19.0760,  # Mumbai latitude
+    'lon': 72.8777,  # Mumbai longitude
+    'city': 'Mumbai'  # City name
+}
+
+# OpenWeatherMap API Key
+# API key configured for real-time weather and AQI data
+OPENWEATHER_API_KEY = config('OPENWEATHER_API_KEY', default='e65da6d6bbfa0823463db6c09ce8918d')
+

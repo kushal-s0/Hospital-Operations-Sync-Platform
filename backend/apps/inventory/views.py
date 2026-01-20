@@ -98,6 +98,66 @@ def get_disease_demand_forecast(request):
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+@api_view(['GET'])
+@permission_classes([AllowAny])  # Allow public access for predictions
+def get_weather_based_prediction(request):
+    """
+    Get medicine demand prediction based on weather and AQI conditions.
+    
+    AUTOMATIC - Fetches real-time weather and AQI data.
+    Uses rule-based predictions to forecast disease spikes.
+    
+    Response:
+    {
+        "weather_aqi_factors": [
+            {
+                "trigger": "High Air Pollution",
+                "value": "AQI: 175 (Unhealthy)",
+                "diseases": ["Respiratory Infection", "Asthma"],
+                "severity": "High",
+                "recommendation": "Stock up on respiratory medicines"
+            }
+        ],
+        "disease_impact": {...},
+        "predicted_medicine_demand": {
+            "Salbutamol Inhaler": {
+                "quantity": 45,
+                "base_quantity": 30,
+                "related_diseases": ["Asthma"],
+                "urgency": "High"
+            }
+        },
+        "current_weather": {
+            "temperature": 32.5,
+            "humidity": 75,
+            "description": "light rain"
+        },
+        "current_aqi": {
+            "aqi": 175,
+            "quality": "Unhealthy"
+        }
+    }
+    """
+    try:
+        from .weather_predictor import get_weather_predictor
+        
+        # Get predictor instance
+        predictor = get_weather_predictor()
+        
+        # Get weather-based predictions
+        prediction = predictor.predict_medicine_demand()
+        
+        # Add current conditions
+        conditions = predictor.get_current_conditions()
+        prediction['current_weather'] = conditions['weather']
+        prediction['current_aqi'] = conditions['aqi']
+        prediction['location'] = conditions['location']
+        
+        return Response(prediction)
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 @api_view(['POST'])
 @permission_classes([AllowAny])  # Allow public access for predictions
 def manual_prediction(request):

@@ -7,6 +7,7 @@ const Inventory = () => {
   const [activeTab, setActiveTab] = useState('all');
   const [mlAlerts, setMlAlerts] = useState(null);
   const [demandForecast, setDemandForecast] = useState(null);
+  const [weatherPrediction, setWeatherPrediction] = useState(null);
   const [selectedItem, setSelectedItem] = useState(null);
   const [itemPrediction, setItemPrediction] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -32,6 +33,7 @@ const Inventory = () => {
   useEffect(() => {
     fetchMLPredictions();
     fetchInventory();
+    fetchWeatherPrediction();
   }, []);
 
   const fetchInventory = async () => {
@@ -110,6 +112,16 @@ const Inventory = () => {
     setLoading(false);
   };
 
+  const fetchWeatherPrediction = async () => {
+    try {
+      const response = await inventoryAPI.getWeatherPrediction();
+      setWeatherPrediction(response.data);
+      console.log('Weather prediction:', response.data);
+    } catch (error) {
+      console.error('Error fetching weather prediction:', error);
+    }
+  };
+
   const fetchItemPrediction = async (itemId) => {
     try {
       const response = await inventoryAPI.getPrediction(itemId);
@@ -151,6 +163,23 @@ const Inventory = () => {
       });
     }
     
+    setShowRestockModal(true);
+  };
+
+  const handleAddNewItem = () => {
+    setRestockMode('add');
+    setRestockItem(null);
+    // Reset form to empty
+    setRestockForm({
+      sku: '',
+      name: '',
+      category: 'Medicine',
+      supplier: '',
+      unit_price: '',
+      expiry_date: '',
+      stock_quantity: '',
+      reorder_level: ''
+    });
     setShowRestockModal(true);
   };
 
@@ -231,7 +260,16 @@ const Inventory = () => {
     ? sortedInventory 
     : activeTab === 'low_stock' 
       ? sortedInventory.filter(item => item.is_low_stock)
-      : sortedInventory.filter(item => item.item_type === activeTab);
+      : activeTab === 'expiring'
+        ? sortedInventory.filter(item => {
+            if (!item.expiry_date) return false;
+            const expiry = new Date(item.expiry_date);
+            const today = new Date();
+            const fifteenDaysFromNow = new Date();
+            fifteenDaysFromNow.setDate(today.getDate() + 15);
+            return expiry >= today && expiry <= fifteenDaysFromNow;
+          })
+        : sortedInventory.filter(item => item.item_type === activeTab);
 
   // Pagination logic
   const indexOfLastItem = currentPage * itemsPerPage;
@@ -291,12 +329,28 @@ const Inventory = () => {
     { 
       key: 'unit_price', 
       label: 'Unit Price',
-      render: (row) => row.unit_price ? `$${parseFloat(row.unit_price).toFixed(2)}` : 'N/A'
+      render: (row) => row.unit_price ? `₹${parseFloat(row.unit_price).toFixed(2)}` : 'N/A'
     },
     { 
       key: 'expiry_date', 
       label: 'Expiry Date',
-      render: (row) => row.expiry_date || 'N/A'
+      render: (row) => {
+        if (!row.expiry_date) return 'N/A';
+        
+        const expiry = new Date(row.expiry_date);
+        const today = new Date();
+        const fifteenDaysFromNow = new Date();
+        fifteenDaysFromNow.setDate(today.getDate() + 15);
+        
+        const isExpiringSoon = expiry >= today && expiry <= fifteenDaysFromNow;
+        const isExpired = expiry < today;
+        
+        return (
+          <span className={isExpired ? 'expiry-expired' : isExpiringSoon ? 'expiry-soon' : 'expiry-ok'}>
+            {row.expiry_date} {isExpiringSoon && '⚠️'} {isExpired && '❌'}
+          </span>
+        );
+      }
     },
     { 
       key: 'status', 
@@ -348,9 +402,10 @@ const Inventory = () => {
     expiringSoon: inventoryItems.filter(i => {
       if (!i.expiry_date) return false;
       const expiry = new Date(i.expiry_date);
-      const threshold = new Date();
-      threshold.setDate(threshold.getDate() + 30);
-      return expiry <= threshold;
+      const today = new Date();
+      const fifteenDaysFromNow = new Date();
+      fifteenDaysFromNow.setDate(today.getDate() + 15);
+      return expiry >= today && expiry <= fifteenDaysFromNow;
     }).length,
     mlHighPriority: mlAlerts?.high_priority || 0,
   };
@@ -366,7 +421,9 @@ const Inventory = () => {
           <button className="btn btn-secondary" onClick={fetchMLPredictions}>
             🔄 Refresh Predictions
           </button>
-          <button className="btn btn-primary">+ Add Item</button>
+          <button className="btn btn-primary" onClick={handleAddNewItem}>
+            + Add Item
+          </button>
         </div>
       </div>
 
@@ -433,6 +490,124 @@ const Inventory = () => {
         </div>
       )}
 
+      {/* Weather & AQI-Based Prediction Section */}
+      {weatherPrediction && (
+        <div className="weather-prediction-section">
+          <h2>🌤️ Weather & AQI-Based Forecast</h2>
+          <p className="forecast-subtitle">
+            Real-time environmental data for {weatherPrediction.location?.city || 'your location'}
+          </p>
+          
+          {/* Current Conditions */}
+          <div className="current-conditions">
+            <div className="condition-card weather">
+              <span className="icon">🌡️</span>
+              <div className="condition-info">
+                <span className="value">{weatherPrediction.current_weather?.temperature}°C</span>
+                <span className="label">{weatherPrediction.current_weather?.description}</span>
+                <span className="detail">Feels like {weatherPrediction.current_weather?.feels_like}°C</span>
+              </div>
+            </div>
+            
+            <div className="condition-card humidity">
+              <span className="icon">💧</span>
+              <div className="condition-info">
+                <span className="value">{weatherPrediction.current_weather?.humidity}%</span>
+                <span className="label">Humidity</span>
+              </div>
+            </div>
+            
+            <div className={`condition-card aqi ${weatherPrediction.current_aqi?.aqi > 150 ? 'bad' : weatherPrediction.current_aqi?.aqi > 100 ? 'moderate' : 'good'}`}>
+              <span className="icon">💨</span>
+              <div className="condition-info">
+                <span className="value">AQI: {weatherPrediction.current_aqi?.aqi}</span>
+                <span className="label">{weatherPrediction.current_aqi?.quality}</span>
+                <span className="detail">PM2.5: {weatherPrediction.current_aqi?.pm2_5?.toFixed(1)}</span>
+              </div>
+            </div>
+          </div>
+          
+          {/* Risk Factors */}
+          {weatherPrediction.weather_aqi_factors && weatherPrediction.weather_aqi_factors.length > 0 && (
+            <div className="risk-factors">
+              <h3>⚠️ Disease Risk Factors Detected</h3>
+              <div className="risk-grid">
+                {weatherPrediction.weather_aqi_factors.map((factor, idx) => (
+                  <div key={idx} className={`risk-card ${factor.severity.toLowerCase()}`}>
+                    <div className="risk-header">
+                      <span className="risk-trigger">{factor.trigger}</span>
+                      <span className={`severity-badge ${factor.severity.toLowerCase()}`}>
+                        {factor.severity}
+                      </span>
+                    </div>
+                    <div className="risk-value">{factor.value}</div>
+                    <div className="risk-diseases">
+                      <strong>Expected diseases:</strong>
+                      <ul>
+                        {factor.diseases.map((disease, i) => (
+                          <li key={i}>{disease}</li>
+                        ))}
+                      </ul>
+                    </div>
+                    <div className="risk-recommendation">
+                      💡 {factor.recommendation}
+                    </div>
+                    <div className="risk-multiplier">
+                      Demand increase: <strong>{((factor.multiplier - 1) * 100).toFixed(0)}%</strong>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          
+          {/* Medicine Demand Predictions */}
+          {weatherPrediction.predicted_medicine_demand && Object.keys(weatherPrediction.predicted_medicine_demand).length > 0 && (
+            <div className="weather-demand">
+              <h3>📦 Recommended Stock Increase</h3>
+              <div className="weather-demand-grid">
+                {Object.entries(weatherPrediction.predicted_medicine_demand)
+                  .sort((a, b) => b[1].quantity - a[1].quantity)
+                  .slice(0, 8)
+                  .map(([medicine, data]) => (
+                    <div key={medicine} className={`weather-demand-card ${data.urgency.toLowerCase()}`}>
+                      <div className="medicine-header">
+                        <span className="medicine-name">{medicine}</span>
+                        <span className={`urgency-badge ${data.urgency.toLowerCase()}`}>
+                          {data.urgency}
+                        </span>
+                      </div>
+                      <div className="quantity-info">
+                        <span className="quantity-label">Additional Stock Needed:</span>
+                        <span className="quantity-value">{data.quantity} units</span>
+                      </div>
+                      <div className="related-diseases">
+                        <span className="diseases-label">Related to:</span>
+                        <span className="diseases-list">{data.related_diseases.join(', ')}</span>
+                      </div>
+                      <div className="base-comparison">
+                        Base: {data.base_quantity} → Adjusted: {data.quantity}
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          )}
+          
+          {weatherPrediction.weather_aqi_factors && weatherPrediction.weather_aqi_factors.length === 0 && (
+            <div className="no-risks">
+              <p>✅ No significant environmental risk factors detected</p>
+              <p>Current conditions are favorable for normal operations</p>
+            </div>
+          )}
+          
+          <div className="forecast-meta">
+            <span>🔄 Last updated: {new Date(weatherPrediction.last_updated).toLocaleString()}</span>
+            <span>📅 Forecast period: {weatherPrediction.forecast_period}</span>
+          </div>
+        </div>
+      )}
+
       {/* Item Prediction Modal */}
       {itemPrediction && (
         <div className="prediction-modal-overlay" onClick={() => setItemPrediction(null)}>
@@ -481,7 +656,7 @@ const Inventory = () => {
         </div>
         <div className="stat-card danger">
           <span className="stat-value">{stats.expiringSoon}</span>
-          <span className="stat-label">Expiring Soon</span>
+          <span className="stat-label">Expiring in 15 Days</span>
         </div>
         <div className="stat-card ml-priority">
           <span className="stat-value">{stats.mlHighPriority}</span>
@@ -501,6 +676,12 @@ const Inventory = () => {
           onClick={() => setActiveTab('low_stock')}
         >
           Low Stock ⚠️
+        </button>
+        <button 
+          className={`tab ${activeTab === 'expiring' ? 'active' : ''}`}
+          onClick={() => setActiveTab('expiring')}
+        >
+          Expiring (15 Days) 📅
         </button>
         <button 
           className={`tab ${activeTab === 'medicine' ? 'active' : ''}`}
@@ -567,22 +748,34 @@ const Inventory = () => {
           <div className="restock-modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h3>
-                {restockMode === 'update' ? '📦 Update Existing Stock' : '➕ Add New Stock'}
+                {restockMode === 'update' 
+                  ? '📦 Update Existing Stock' 
+                  : restockItem 
+                    ? '➕ Add New Stock' 
+                    : '🆕 Add New Item'}
               </h3>
               <button className="close-btn" onClick={() => setShowRestockModal(false)}>×</button>
             </div>
             
             <form onSubmit={handleRestockSubmit}>
-              <div className="form-group">
-                <label>SKU</label>
-                <input 
-                  type="text" 
-                  className="form-control" 
-                  name="sku"
-                  value={restockForm.sku}
-                  readOnly
-                />
-              </div>
+              {!restockItem && restockMode === 'add' && (
+                <div className="alert alert-info">
+                  ℹ️ Fill in the details below to add a completely new item to the inventory.
+                </div>
+              )}
+              
+              {restockForm.sku && (
+                <div className="form-group">
+                  <label>SKU</label>
+                  <input 
+                    type="text" 
+                    className="form-control" 
+                    name="sku"
+                    value={restockForm.sku}
+                    readOnly
+                  />
+                </div>
+              )}
 
               <div className="form-group">
                 <label>Item Name *</label>
@@ -593,6 +786,7 @@ const Inventory = () => {
                   value={restockForm.name}
                   onChange={handleRestockFormChange}
                   readOnly={restockMode === 'update'}
+                  placeholder="Enter item name"
                   required
                 />
               </div>
@@ -628,7 +822,7 @@ const Inventory = () => {
               </div>
 
               <div className="form-group">
-                <label>Unit Price ($)</label>
+                <label>Unit Price (₹)</label>
                 <input 
                   type="number" 
                   step="0.01"
