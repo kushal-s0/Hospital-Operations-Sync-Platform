@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import './Sidebar.css';
 
 // Professional Icon Components
@@ -107,6 +107,7 @@ const iconMap = {
 const Sidebar = () => {
   
   const [userRole, setUserRole] = useState(null);
+  const location = useLocation();
 
   useEffect(() => {
     // Get user role from localStorage
@@ -121,6 +122,9 @@ const Sidebar = () => {
 
   const isReceptionist = userRole === 'Receptionist';
   const isAdmin = userRole === 'Admin';
+  
+  // Check if current path is a receptionist page
+  const isOnReceptionistPage = location.pathname.startsWith('/receptionist');
 
   const baseMenuItems = [
     { path: '/dashboard', label: 'Dashboard', icon: 'dashboard', roles: ['Admin', 'Doctor', 'Nurse', 'Pharmacist', 'Receptionist'] },
@@ -129,7 +133,7 @@ const Sidebar = () => {
     { path: '/admissions', label: 'Admissions', icon: 'admissions', roles: ['Admin', 'Nurse', 'Receptionist'] },
     { path: '/inventory', label: 'Inventory', icon: 'inventory', roles: ['Admin', 'Pharmacist', 'Receptionist'] },
     { path: '/inter-hospital', label: 'Inter-Hospital', icon: 'hospital', roles: ['Admin'] },
-    { path: '/receptionist', label: 'Receptionist Portal', icon: 'receptionist', roles: ['Admin'] },
+    { path: '/receptionist-dashboard', label: 'Receptionist Portal', icon: 'receptionist', roles: ['Admin'] },
   ];
   
   const receptionistMenuItems = [
@@ -139,13 +143,16 @@ const Sidebar = () => {
     { path: '/receptionist-treatments', label: 'Treatments', icon: 'treatments', receptionist: true },
   ];
 
-  const menuItems = isReceptionist ? receptionistMenuItems : (userRole
+  // Show receptionist menu if user is receptionist OR if admin is on receptionist page
+  const showReceptionistMenu = isReceptionist || (isAdmin && isOnReceptionistPage);
+
+  const menuItems = showReceptionistMenu ? receptionistMenuItems : (userRole
     ? baseMenuItems.filter(item => item.roles.includes(userRole))
     : []);
 
   return (
     <aside className="sidebar">
-      {isReceptionist && (
+      {showReceptionistMenu && (
         <div className="sidebar-header">
           <span className="sidebar-title">Receptionist Menu</span>
         </div>
