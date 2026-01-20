@@ -9,6 +9,17 @@
   z-index: 999;
 }
 
+.sidebar-title {
+  padding: 12px 24px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #667eea;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  border-bottom: 2px solid #667eea;
+  margin-bottom: 8px;
+}
+
 .sidebar-nav {
   display: flex;
   flex-direction: column;

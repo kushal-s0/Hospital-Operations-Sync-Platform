@@ -10,6 +10,11 @@ import BedManagement from './pages/Beds/BedManagement';
 import Admissions from './pages/Admissions/Admissions';
 import Inventory from './pages/Inventory/Inventory';
 import InterHospital from './pages/InterHospital/InterHospital';
+import ReceptionistDashboard from './pages/Receptionist/ReceptionistDashboard';
+import ReceptionistDashboardTab from './pages/Receptionist/ReceptionistDashboardTab';
+import ReceptionistBillingTab from './pages/Receptionist/ReceptionistBillingTab';
+import ReceptionistTransactionsTab from './pages/Receptionist/ReceptionistTransactionsTab';
+import ReceptionistTreatmentsTab from './pages/Receptionist/ReceptionistTreatmentsTab';
 import { isAuthenticated } from './services/api';
 import './App.css';
 
@@ -73,6 +78,48 @@ function App() {
           <PrivateRoute>
             <Layout>
               <InterHospital />
+            </Layout>
+          </PrivateRoute>
+        } />
+
+        {/* Receptionist Dashboard - With Layout for profile/logout */}
+        <Route path="/receptionist" element={
+          <PrivateRoute>
+            <Layout>
+              <ReceptionistDashboard />
+            </Layout>
+          </PrivateRoute>
+        } />
+
+        {/* Receptionist Routes - Separate page views */}
+        <Route path="/receptionist-dashboard" element={
+          <PrivateRoute>
+            <Layout>
+              <ReceptionistDashboardTab />
+            </Layout>
+          </PrivateRoute>
+        } />
+
+        <Route path="/receptionist-billing" element={
+          <PrivateRoute>
+            <Layout>
+              <ReceptionistBillingTab />
+            </Layout>
+          </PrivateRoute>
+        } />
+
+        <Route path="/receptionist-transactions" element={
+          <PrivateRoute>
+            <Layout>
+              <ReceptionistTransactionsTab />
+            </Layout>
+          </PrivateRoute>
+        } />
+
+        <Route path="/receptionist-treatments" element={
+          <PrivateRoute>
+            <Layout>
+              <ReceptionistTreatmentsTab />
             </Layout>
           </PrivateRoute>
         } />

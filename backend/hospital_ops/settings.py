@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'apps.admissions',
     'apps.dashboard',
     'apps.interhospital',
+    'apps.receptionist',
 ]
 
 MIDDLEWARE = [
