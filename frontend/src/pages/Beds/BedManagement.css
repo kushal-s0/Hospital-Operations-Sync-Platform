@@ -95,14 +95,14 @@
 
 .stat-card .stat-value {
   display: block;
-  font-size: 2rem;
+  font-size: 1.5rem;
   font-weight: 700;
   color: #1e293b;
 }
 
 .stat-card .stat-label {
   font-size: 0.85rem;
-  color: #ffffff;
+  color: #000000;
 }
 
 .search-section {
