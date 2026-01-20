@@ -1,124 +1,121 @@
 import React, { useState, useEffect } from 'react';
-import apiClient from '../../services/api';
+import { paymentAPI } from '../../services/api';
 import './ReceptionistDashboard.css';
 
 const ReceptionistTransactionsTab = () => {
   const [transactionsData, setTransactionsData] = useState([]);
-  const [statistics, setStatistics] = useState(null);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    fetchTransactionsData();
-    fetchStatistics();
-  }, [currentPage]);
+    fetchPaymentTransactions();
+  }, []);
 
-  const fetchTransactionsData = async () => {
+  const fetchPaymentTransactions = async () => {
     try {
-      const response = await apiClient.get('/receptionist/dashboard/financial_transactions_list/', {
-        params: { page: currentPage, page_size: 10 }
-      });
-      console.log('Transactions API Response:', response.data);
-      if (response.data && response.data.data) {
-        setTransactionsData(response.data.data);
-        setTotalPages(response.data.total_pages || 1);
-      }
+      setLoading(true);
+      const response = await paymentAPI.getTransactionHistory();
+      console.log('Payment Transactions Response:', response.data);
+      
+      // Backend returns {status: 'success', data: [...]}
+      const data = response.data.data || [];
+      setTransactionsData(data);
     } catch (err) {
       setError(err.message);
-      console.error('Error fetching transactions:', err);
+      console.error('Error fetching payment transactions:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchStatistics = async () => {
-    try {
-      const response = await apiClient.get('/receptionist/dashboard/transaction_statistics/');
-      console.log('Transaction Stats Response:', response.data);
-      if (response.data && response.data.data) {
-        setStatistics(response.data.data);
-      }
-    } catch (err) {
-      console.error('Error fetching statistics:', err);
-    }
-  };
-
-  if (loading) return <div className="loading">Loading...</div>;
+  if (loading) return <div className="loading">Loading payment transactions...</div>;
   if (error) return <div className="error">Error: {error}</div>;
+
+  // Calculate statistics from transactions
+  const totalAmount = transactionsData.reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
+  const successCount = transactionsData.filter(t => t.status === 'captured').length;
+  const failedCount = transactionsData.filter(t => t.status === 'failed').length;
 
   return (
     <div className="receptionist-container">
       <header className="receptionist-header">
-        <h1>Financial Transactions</h1>
-        <p>Track income and expense transactions</p>
+        <h1>Payment Transactions</h1>
+        <p>View all Razorpay payment transactions</p>
       </header>
 
-      {statistics && (
-        <div className="stats-grid">
-          <div className="stat-card">
-            <h4>Income Count</h4>
-            <p className="stat-value">{statistics.income_count}</p>
-          </div>
-          <div className="stat-card">
-            <h4>Expense Count</h4>
-            <p className="stat-value">{statistics.expense_count}</p>
-          </div>
+      <div className="stats-grid">
+        <div className="stat-card">
+          <h4>Total Transactions</h4>
+          <p className="stat-value">{transactionsData.length}</p>
         </div>
-      )}
+        <div className="stat-card">
+          <h4>Successful</h4>
+          <p className="stat-value" style={{ color: '#28a745' }}>{successCount}</p>
+        </div>
+        <div className="stat-card">
+          <h4>Failed</h4>
+          <p className="stat-value" style={{ color: '#dc3545' }}>{failedCount}</p>
+        </div>
+        <div className="stat-card">
+          <h4>Total Amount</h4>
+          <p className="stat-value">₹{totalAmount.toFixed(2)}</p>
+        </div>
+      </div>
 
       <div className="table-container">
         <table className="data-table">
           <thead>
             <tr>
               <th>Transaction ID</th>
-              <th>Type</th>
-              <th>Reference</th>
+              <th>Bill ID</th>
+              <th>Order ID</th>
+              <th>Payment ID</th>
               <th>Amount (₹)</th>
-              <th>Method</th>
+              <th>Status</th>
+              <th>Payment Method</th>
               <th>Date</th>
             </tr>
           </thead>
           <tbody>
             {transactionsData && transactionsData.length > 0 ? (
-              transactionsData.map((transaction, index) => (
-                <tr key={index}>
+              transactionsData.map((transaction) => (
+                <tr key={transaction.transaction_id}>
                   <td>{transaction.transaction_id}</td>
+                  <td>{transaction.bill_id || 'N/A'}</td>
                   <td>
-                    <span className={`badge badge-${transaction.transaction_type.toLowerCase()}`}>
-                      {transaction.transaction_type}
+                    <code style={{ fontSize: '0.85em', color: '#6c757d' }}>
+                      {transaction.razorpay_order_id ? transaction.razorpay_order_id.substring(0, 20) + '...' : 'N/A'}
+                    </code>
+                  </td>
+                  <td>
+                    <code style={{ fontSize: '0.85em', color: '#6c757d' }}>
+                      {transaction.razorpay_payment_id ? transaction.razorpay_payment_id.substring(0, 20) + '...' : 'N/A'}
+                    </code>
+                  </td>
+                  <td>₹{parseFloat(transaction.amount || 0).toFixed(2)}</td>
+                  <td>
+                    <span className={`badge badge-${
+                      transaction.status === 'captured' ? 'success' :
+                      transaction.status === 'failed' ? 'danger' :
+                      transaction.status === 'authorized' ? 'warning' :
+                      'secondary'
+                    }`}>
+                      {transaction.status.toUpperCase()}
                     </span>
                   </td>
-                  <td>{transaction.reference_type}</td>
-                  <td>{transaction.amount ? parseFloat(transaction.amount).toFixed(2) : '0.00'}</td>
-                  <td>{transaction.payment_method}</td>
-                  <td>{transaction.transaction_date ? new Date(transaction.transaction_date).toLocaleDateString() : 'N/A'}</td>
+                  <td>{transaction.payment_method || 'N/A'}</td>
+                  <td>{transaction.created_at ? new Date(transaction.created_at).toLocaleString() : 'N/A'}</td>
                 </tr>
               ))
             ) : (
               <tr>
-                <td colSpan="6" style={{ textAlign: 'center', padding: '20px' }}>No transaction data available</td>
+                <td colSpan="8" style={{ textAlign: 'center', padding: '20px' }}>
+                  No payment transactions found
+                </td>
               </tr>
             )}
           </tbody>
         </table>
-      </div>
-
-      <div className="pagination">
-        <button 
-          onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-          disabled={currentPage === 1}
-        >
-          Previous
-        </button>
-        <span>Page {currentPage} of {totalPages}</span>
-        <button 
-          onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-          disabled={currentPage === totalPages}
-        >
-          Next
-        </button>
       </div>
     </div>
   );

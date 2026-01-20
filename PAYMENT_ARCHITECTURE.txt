@@ -1,0 +1,316 @@
+/*
+ * RAZORPAY PAYMENT INTEGRATION - SYSTEM ARCHITECTURE
+ * Hospital Management System
+ */
+
+/*
+ * ============================================================================
+ * PAYMENT FLOW DIAGRAM
+ * ============================================================================
+ *
+ *   [User Interface - Receptionist Billing Tab]
+ *                    |
+ *                    | 1. Click "Pay Bill"
+ *                    ↓
+ *   [Frontend - ReceptionistBillingTab.js]
+ *                    |
+ *                    | 2. POST /api/payments/create_order/
+ *                    |    Body: { bill_id: 123 }
+ *                    ↓
+ *   [Backend - PaymentViewSet.create_order()]
+ *                    |
+ *                    | 3. Fetch bill details from MySQL
+ *                    | 4. Create Razorpay order
+ *                    | 5. Save to payment_transactions table
+ *                    |
+ *                    | Response: { order_id, amount, key }
+ *                    ↓
+ *   [Frontend - Razorpay Checkout Modal Opens]
+ *                    |
+ *                    | 6. User enters card details
+ *                    | 7. Razorpay processes payment
+ *                    |
+ *                    | On Success
+ *                    ↓
+ *   [Frontend - Razorpay Handler Function]
+ *                    |
+ *                    | 8. POST /api/payments/verify_payment/
+ *                    |    Body: {
+ *                    |      razorpay_order_id,
+ *                    |      razorpay_payment_id,
+ *                    |      razorpay_signature
+ *                    |    }
+ *                    ↓
+ *   [Backend - PaymentViewSet.verify_payment()]
+ *                    |
+ *                    | 9. Verify signature (HMAC-SHA256)
+ *                    | 10. Update payment_transactions (status=captured)
+ *                    | 11. Update billing (payment_status=Paid)
+ *                    |
+ *                    | Response: { status: success }
+ *                    ↓
+ *   [Frontend - Success Message + Refresh Data]
+ *                    |
+ *                    ✓ Payment Complete!
+ *
+ * ============================================================================
+ */
+
+/*
+ * ============================================================================
+ * DATABASE SCHEMA
+ * ============================================================================
+ *
+ * Table: payment_transactions
+ * ┌─────────────────────┬──────────────┬─────────────────────────────────┐
+ * │ Column              │ Type         │ Description                     │
+ * ├─────────────────────┼──────────────┼─────────────────────────────────┤
+ * │ id                  │ INT (PK)     │ Auto-increment primary key      │
+ * │ bill_id             │ INT (FK)     │ References billing.bill_id      │
+ * │ razorpay_order_id   │ VARCHAR(100) │ Razorpay order ID (unique)      │
+ * │ razorpay_payment_id │ VARCHAR(100) │ Payment ID (after success)      │
+ * │ razorpay_signature  │ VARCHAR(255) │ Payment signature               │
+ * │ amount              │ DECIMAL(10,2)│ Payment amount in INR           │
+ * │ currency            │ VARCHAR(10)  │ Currency code (default: INR)    │
+ * │ status              │ VARCHAR(20)  │ created/captured/failed         │
+ * │ payment_method      │ VARCHAR(50)  │ card/upi/netbanking/wallet      │
+ * │ error_code          │ VARCHAR(50)  │ Error code if failed            │
+ * │ error_description   │ TEXT         │ Error description if failed     │
+ * │ created_at          │ TIMESTAMP    │ Creation timestamp              │
+ * │ updated_at          │ TIMESTAMP    │ Last update timestamp           │
+ * └─────────────────────┴──────────────┴─────────────────────────────────┘
+ *
+ * Indexes:
+ * - idx_bill_id (bill_id)
+ * - idx_razorpay_order_id (razorpay_order_id)
+ * - idx_status (status)
+ *
+ * Constraints:
+ * - FOREIGN KEY (bill_id) REFERENCES billing(bill_id) ON DELETE CASCADE
+ * - UNIQUE (razorpay_order_id)
+ *
+ * ============================================================================
+ */
+
+/*
+ * ============================================================================
+ * API ENDPOINTS
+ * ============================================================================
+ *
+ * 1. CREATE ORDER
+ *    POST /api/payments/create_order/
+ *    Auth: Required (JWT)
+ *    Body: { "bill_id": 123 }
+ *    Response: {
+ *      "status": "success",
+ *      "data": {
+ *        "order_id": "order_xxxx",
+ *        "amount": 50000,  // in paise
+ *        "currency": "INR",
+ *        "bill_id": 123,
+ *        "key": "rzp_test_xxxx"
+ *      }
+ *    }
+ *
+ * 2. VERIFY PAYMENT
+ *    POST /api/payments/verify_payment/
+ *    Auth: Required (JWT)
+ *    Body: {
+ *      "razorpay_order_id": "order_xxxx",
+ *      "razorpay_payment_id": "pay_xxxx",
+ *      "razorpay_signature": "signature_xxxx"
+ *    }
+ *    Response: {
+ *      "status": "success",
+ *      "message": "Payment verified successfully",
+ *      "data": {
+ *        "bill_id": 123,
+ *        "payment_id": "pay_xxxx",
+ *        "status": "paid"
+ *      }
+ *    }
+ *
+ * 3. TRANSACTION HISTORY
+ *    GET /api/payments/transaction_history/?bill_id=123
+ *    Auth: Required (JWT)
+ *    Response: {
+ *      "status": "success",
+ *      "data": [ ... array of transactions ... ]
+ *    }
+ *
+ * 4. WEBHOOK HANDLER
+ *    POST /api/payments/handle_webhook/
+ *    Auth: Not Required (Razorpay signature verified)
+ *    Body: { ... Razorpay webhook payload ... }
+ *
+ * ============================================================================
+ */
+
+/*
+ * ============================================================================
+ * SIGNATURE VERIFICATION ALGORITHM
+ * ============================================================================
+ *
+ * Python (Backend):
+ * -----------------
+ * import hmac
+ * import hashlib
+ * from django.conf import settings
+ *
+ * def verify_signature(order_id, payment_id, signature):
+ *     message = f"{order_id}|{payment_id}"
+ *     generated_signature = hmac.new(
+ *         settings.RAZORPAY_SECRET_KEY.encode(),
+ *         message.encode(),
+ *         hashlib.sha256
+ *     ).hexdigest()
+ *     return generated_signature == signature
+ *
+ * Security: HMAC-SHA256 ensures payment authenticity
+ *
+ * ============================================================================
+ */
+
+/*
+ * ============================================================================
+ * PAYMENT STATUS LIFECYCLE
+ * ============================================================================
+ *
+ *   created → authorized → captured → [END - Success]
+ *      ↓
+ *   failed → [END - Failure]
+ *      ↓
+ *   refunded → [END - Refund]
+ *
+ * Status Descriptions:
+ * - created:    Order created, payment not initiated
+ * - authorized: Payment authorized but not captured (for later capture)
+ * - captured:   Payment successfully completed
+ * - failed:     Payment failed
+ * - refunded:   Payment refunded
+ *
+ * ============================================================================
+ */
+
+/*
+ * ============================================================================
+ * FRONTEND RAZORPAY INTEGRATION
+ * ============================================================================
+ *
+ * 1. Load Razorpay Script:
+ *    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+ *
+ * 2. Configure Options:
+ *    const options = {
+ *      key: "rzp_test_xxxx",
+ *      amount: 50000,  // paise
+ *      currency: "INR",
+ *      name: "Hospital Management System",
+ *      description: "Payment for Bill #123",
+ *      order_id: "order_xxxx",
+ *      handler: function(response) {
+ *        // Verify payment
+ *      },
+ *      prefill: {
+ *        name: "Patient Name",
+ *        email: "patient@example.com",
+ *        contact: "9999999999"
+ *      },
+ *      theme: {
+ *        color: "#3399cc"
+ *      }
+ *    };
+ *
+ * 3. Open Checkout:
+ *    const rzp = new Razorpay(options);
+ *    rzp.open();
+ *
+ * ============================================================================
+ */
+
+/*
+ * ============================================================================
+ * TEST CARDS (Razorpay Test Mode)
+ * ============================================================================
+ *
+ * SUCCESS:
+ * Card Number:  4111 1111 1111 1111
+ * CVV:          Any 3 digits
+ * Expiry:       Any future date
+ * Result:       Payment succeeds
+ *
+ * FAILURE:
+ * Card Number:  4111 1111 1111 1112
+ * CVV:          Any 3 digits
+ * Expiry:       Any future date
+ * Result:       Payment fails
+ *
+ * OTHER TEST CARDS:
+ * MasterCard:   5555 5555 5555 4444
+ * Visa:         4012 8888 8888 1881
+ * RuPay:        6073 8498 2643 4334
+ *
+ * Note: Test mode - no real money is charged!
+ *
+ * ============================================================================
+ */
+
+/*
+ * ============================================================================
+ * ENVIRONMENT VARIABLES
+ * ============================================================================
+ *
+ * .env file:
+ * ----------
+ * RAZORPAY_PUBLIC_KEY=rzp_test_S6EZlI0Lzafb4J
+ * RAZORPAY_SECRET_KEY=6jW2khcl70fj7UrUOVaVsIFT
+ * RAZORPAY_WEBHOOK_SECRET=your_webhook_secret  (optional, for webhooks)
+ *
+ * settings.py:
+ * ------------
+ * from decouple import config
+ *
+ * RAZORPAY_PUBLIC_KEY = config('RAZORPAY_PUBLIC_KEY', default='')
+ * RAZORPAY_SECRET_KEY = config('RAZORPAY_SECRET_KEY', default='')
+ * RAZORPAY_WEBHOOK_SECRET = config('RAZORPAY_WEBHOOK_SECRET', default='')
+ *
+ * ============================================================================
+ */
+
+/*
+ * ============================================================================
+ * PRODUCTION CHECKLIST
+ * ============================================================================
+ *
+ * Before going live:
+ *
+ * [ ] Switch to Razorpay Live Keys
+ *     - Get live keys from Razorpay Dashboard
+ *     - Update .env file
+ *
+ * [ ] Configure Webhook URL
+ *     - Set in Razorpay Dashboard
+ *     - Add RAZORPAY_WEBHOOK_SECRET to .env
+ *
+ * [ ] Enable HTTPS
+ *     - SSL certificate required
+ *     - Update CORS settings
+ *
+ * [ ] Test All Scenarios
+ *     - Successful payments
+ *     - Failed payments
+ *     - Webhook handling
+ *     - Error cases
+ *
+ * [ ] Set Up Monitoring
+ *     - Enable logging
+ *     - Monitor payment_transactions table
+ *     - Set up alerts for failures
+ *
+ * [ ] Security Audit
+ *     - Verify signature validation
+ *     - Check authentication
+ *     - Review error messages
+ *
+ * ============================================================================
+ */
