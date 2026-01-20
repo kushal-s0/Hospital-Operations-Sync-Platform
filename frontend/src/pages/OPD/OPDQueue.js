@@ -42,11 +42,19 @@ const OPDQueue = () => {
   // Fetch current queue from API
   const fetchQueue = async () => {
     try {
+      console.log('=== FETCHING OPD QUEUE ===');
       const response = await opdAPI.getAll();
+      console.log('Raw API response:', response);
+      console.log('Response data:', response.data);
+      console.log('Is Array?', Array.isArray(response.data));
+      
       // Handle both array and paginated response formats
       const queueData = Array.isArray(response.data) 
         ? response.data 
         : (response.data.results || []);
+      
+      console.log('Parsed queue data:', queueData);
+      console.log('Queue data length:', queueData.length);
       setQueue(queueData);
     } catch (error) {
       console.error('Error fetching queue:', error);
@@ -154,7 +162,8 @@ const OPDQueue = () => {
 
       console.log('Submitting queue data:', queueData);
       const response = await opdAPI.create(queueData);
-      console.log('Response:', response);
+      console.log('Create response:', response);
+      console.log('Created patient ID:', response.data?.id);
       
       setSuccess('Patient added to queue successfully!');
       
@@ -170,7 +179,9 @@ const OPDQueue = () => {
       });
       
       // Refresh queue and close form
-      fetchQueue();
+      console.log('Refreshing queue after adding patient...');
+      await fetchQueue();
+      
       setTimeout(() => {
         setShowAddPatientForm(false);
         setSuccess('');
