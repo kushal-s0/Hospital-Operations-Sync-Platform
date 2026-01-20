@@ -6,7 +6,7 @@ const ReceptionistDashboardTab = () => {
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [vizType, setVizType] = useState('cards'); // cards, trends, alerts, comparison
+  const [vizType, setVizType] = useState('cards'); // Default to Stat Cards view
 
   useEffect(() => {
     fetchDashboardData();
@@ -77,25 +77,11 @@ const ReceptionistDashboardTab = () => {
           📊 Stat Cards
         </button>
         <button 
-          className={`viz-btn ${vizType === 'trends' ? 'active' : ''}`}
-          onClick={() => setVizType('trends')}
-          title="Trends and metrics"
-        >
-          📈 Trends
-        </button>
-        <button 
           className={`viz-btn ${vizType === 'alerts' ? 'active' : ''}`}
           onClick={() => setVizType('alerts')}
           title="Alert status"
         >
           ⚠️ Alerts
-        </button>
-        <button 
-          className={`viz-btn ${vizType === 'comparison' ? 'active' : ''}`}
-          onClick={() => setVizType('comparison')}
-          title="Current vs Predicted"
-        >
-          ⚔️ Comparison
         </button>
       </div>
 
@@ -174,73 +160,9 @@ const ReceptionistDashboardTab = () => {
         </>
       )}
 
-      {/* View 2: Trends & Breakdown */}
-      {vizType === 'trends' && (
-        <div className="trends-view">
-          <div className="trends-container">
-            {/* Income vs Expense Ratio */}
-            <div className="trend-card">
-              <h3>💰 Financial Ratio</h3>
-              <div className="ratio-display">
-                <div className="ratio-bars">
-                  <div className="ratio-bar income-bar" style={{ width: `${100 - expenseRatio}%` }}>
-                    <span>{formatNumber(100 - expenseRatio)}% Income</span>
-                  </div>
-                  <div className="ratio-bar expense-bar" style={{ width: `${expenseRatio}%` }}>
-                    <span>{formatNumber(expenseRatio)}% Expense</span>
-                  </div>
-                </div>
-              </div>
-              <p className="trend-subtext">Expense ratio: {formatNumber(expenseRatio)}%</p>
-            </div>
 
-            {/* Profit Trend Card */}
-            <div className="trend-card">
-              <h3>📈 Profit Analysis</h3>
-              <div className="profit-trend">
-                <div className="trend-metric">
-                  <span className="metric-label">Current Profit</span>
-                  <span className="metric-value" style={{ color: currentProfit >= 0 ? '#27ae60' : '#e74c3c' }}>
-                    ₹{formatNumber(currentProfit)}
-                  </span>
-                </div>
-                <div className="trend-arrow">→</div>
-                <div className="trend-metric">
-                  <span className="metric-label">Predicted Profit</span>
-                  <span className="metric-value" style={{ color: predictedProfit >= 0 ? '#27ae60' : '#e74c3c' }}>
-                    ₹{formatNumber(predictedProfit)}
-                  </span>
-                </div>
-              </div>
-              <p className="trend-change" style={{ color: predictedProfit >= currentProfit ? '#27ae60' : '#e74c3c' }}>
-                {predictedProfit >= currentProfit ? '📈 Trending up' : '📉 Trending down'}
-                ({formatNumber(Math.abs(predictedProfit - currentProfit))})
-              </p>
-            </div>
 
-            {/* Collection Efficiency */}
-            <div className="trend-card">
-              <h3>💳 Bill Collection</h3>
-              <div className="collection-stats">
-                <div className="coll-stat">
-                  <span className="coll-label">Paid</span>
-                  <span className="coll-badge paid">{formatCount(dashboardData.paid_bills_count)}</span>
-                </div>
-                <div className="coll-stat">
-                  <span className="coll-label">Pending</span>
-                  <span className="coll-badge pending">{formatCount(dashboardData.pending_bills_count)}</span>
-                </div>
-                <div className="coll-stat">
-                  <span className="coll-label">Failed</span>
-                  <span className="coll-badge failed">{formatCount(dashboardData.failed_bills_count)}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* View 3: Alert Status */}
+      {/* View 2: Alert Status */}
       {vizType === 'alerts' && (
         <div className="alerts-view">
           <div className="alert-container">
@@ -300,90 +222,7 @@ const ReceptionistDashboardTab = () => {
         </div>
       )}
 
-      {/* View 4: Current vs Predicted Comparison */}
-      {vizType === 'comparison' && (
-        <div className="comparison-view">
-          <div className="comparison-grid">
-            {/* Income Comparison */}
-            <div className="comparison-card">
-              <h3>Income</h3>
-              <div className="comparison-bars">
-                <div className="comp-item">
-                  <span className="comp-label">Current</span>
-                  <div className="comp-bar">
-                    <div className="comp-fill income" style={{ width: '100%' }}>
-                      ₹{formatNumber(dashboardData.total_income)}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
 
-            {/* Expense Comparison */}
-            <div className="comparison-card">
-              <h3>Expenses</h3>
-              <div className="comparison-bars">
-                <div className="comp-item">
-                  <span className="comp-label">Current</span>
-                  <div className="comp-bar">
-                    <div className="comp-fill expense" style={{ width: Math.min((dashboardData.total_expenses / dashboardData.total_income) * 100, 100) + '%' }}>
-                      ₹{formatNumber(dashboardData.total_expenses)}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Profit Comparison */}
-            <div className="comparison-card">
-              <h3>Profit</h3>
-              <div className="comparison-bars">
-                <div className="comp-item">
-                  <span className="comp-label">Current</span>
-                  <div className="comp-bar">
-                    <div className={`comp-fill ${currentProfit >= 0 ? 'profit' : 'loss'}`} style={{ width: Math.min(Math.abs(currentProfit) / 100000 * 100, 100) + '%' }}>
-                      ₹{formatNumber(currentProfit)}
-                    </div>
-                  </div>
-                </div>
-                <div className="comp-item">
-                  <span className="comp-label">Predicted</span>
-                  <div className="comp-bar">
-                    <div className={`comp-fill ${predictedProfit >= 0 ? 'profit-predicted' : 'loss-predicted'}`} style={{ width: Math.min(Math.abs(predictedProfit) / 100000 * 100, 100) + '%' }}>
-                      ₹{formatNumber(predictedProfit)}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Metrics Table */}
-            <div className="comparison-card metrics-table">
-              <h3>Key Metrics</h3>
-              <table>
-                <tbody>
-                  <tr>
-                    <td>Total Billing</td>
-                    <td>₹{formatNumber(dashboardData.total_billing_amount)}</td>
-                  </tr>
-                  <tr>
-                    <td>Paid Bills</td>
-                    <td>{formatCount(dashboardData.paid_bills_count)}</td>
-                  </tr>
-                  <tr>
-                    <td>Failed Bills</td>
-                    <td>{formatCount(dashboardData.failed_bills_count)}</td>
-                  </tr>
-                  <tr>
-                    <td>Expense Ratio</td>
-                    <td>{formatNumber(expenseRatio)}%</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Recommendations Section */}
       {recommendations && recommendations.length > 0 && (

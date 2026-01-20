@@ -10,7 +10,6 @@ import BedManagement from './pages/Beds/BedManagement';
 import Admissions from './pages/Admissions/Admissions';
 import Inventory from './pages/Inventory/Inventory';
 import InterHospital from './pages/InterHospital/InterHospital';
-import ReceptionistDashboard from './pages/Receptionist/ReceptionistDashboard';
 import ReceptionistDashboardTab from './pages/Receptionist/ReceptionistDashboardTab';
 import ReceptionistBillingTab from './pages/Receptionist/ReceptionistBillingTab';
 import ReceptionistTransactionsTab from './pages/Receptionist/ReceptionistTransactionsTab';
@@ -82,14 +81,6 @@ function App() {
           </PrivateRoute>
         } />
 
-        {/* Receptionist Dashboard - With Layout for profile/logout */}
-        <Route path="/receptionist" element={
-          <PrivateRoute>
-            <Layout>
-              <ReceptionistDashboard />
-            </Layout>
-          </PrivateRoute>
-        } />
 
         {/* Receptionist Routes - Separate page views */}
         <Route path="/receptionist-dashboard" element={

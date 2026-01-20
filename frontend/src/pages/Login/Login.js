@@ -38,7 +38,7 @@ const Login = () => {
       // Redirect based on user role
       const userRole = response.user?.role;
       if (userRole === 'Receptionist') {
-        navigate('/receptionist');
+        navigate('/receptionist-dashboard');
       } else {
         navigate('/dashboard');
       }

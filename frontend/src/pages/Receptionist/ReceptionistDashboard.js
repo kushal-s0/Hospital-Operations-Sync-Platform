@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import apiClient from '../../services/api';
+import ReceptionistDashboardTab from './ReceptionistDashboardTab';
 import './ReceptionistDashboard.css';
 
 const ReceptionistDashboard = () => {
@@ -66,69 +67,11 @@ const ReceptionistDashboard = () => {
           {error && <div className="error">Error: {error}</div>}
 
           {activeTab === 'dashboard' && !loading && dashboardData && (
-            <DashboardTab data={dashboardData} />
+            <ReceptionistDashboardTab data={dashboardData} />
           )}
           {activeTab === 'billing' && <BillingTab />}
           {activeTab === 'transactions' && <TransactionsTab />}
           {activeTab === 'treatments' && <TreatmentsTab />}
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const DashboardTab = ({ data }) => {
-  return (
-    <div className="dashboard-tab">
-      <h2>Dashboard Overview</h2>
-      
-      <div className="stats-grid">
-        <div className="stat-card">
-          <div className="stat-icon">💵</div>
-          <div className="stat-content">
-            <h3>Total Billing</h3>
-            <p className="stat-value">₹{data.total_billing_amount.toFixed(2)}</p>
-          </div>
-        </div>
-
-        <div className="stat-card">
-          <div className="stat-icon">✅</div>
-          <div className="stat-content">
-            <h3>Paid Bills</h3>
-            <p className="stat-value">{data.paid_bills_count}</p>
-          </div>
-        </div>
-
-        <div className="stat-card">
-          <div className="stat-icon">⏳</div>
-          <div className="stat-content">
-            <h3>Pending Bills</h3>
-            <p className="stat-value">{data.pending_bills_count}</p>
-          </div>
-        </div>
-
-        <div className="stat-card">
-          <div className="stat-icon">💰</div>
-          <div className="stat-content">
-            <h3>Income</h3>
-            <p className="stat-value" style={{color: '#27ae60'}}>₹{data.income_transactions.toFixed(2)}</p>
-          </div>
-        </div>
-
-        <div className="stat-card">
-          <div className="stat-icon">💸</div>
-          <div className="stat-content">
-            <h3>Expense</h3>
-            <p className="stat-value" style={{color: '#e74c3c'}}>₹{data.expense_transactions.toFixed(2)}</p>
-          </div>
-        </div>
-
-        <div className="stat-card">
-          <div className="stat-icon">🏥</div>
-          <div className="stat-content">
-            <h3>Total Treatments</h3>
-            <p className="stat-value">{data.total_treatments}</p>
-          </div>
         </div>
       </div>
     </div>
