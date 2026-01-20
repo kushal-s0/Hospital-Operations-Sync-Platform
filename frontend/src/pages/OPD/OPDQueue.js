@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Table, StatusBadge } from '../../components/Common';
 import { opdAPI } from '../../services/api';
+import AdmissionFormModal from '../../components/AdmissionFormModal/AdmissionFormModal';
 import './OPDQueue.css';
 
 const OPDQueue = () => {
@@ -9,6 +10,8 @@ const OPDQueue = () => {
   const [showPredictionPanel, setShowPredictionPanel] = useState(false);
   const [predictionLoading, setPredictionLoading] = useState(false);
   const [showAddPatientForm, setShowAddPatientForm] = useState(false);
+  const [showAdmissionModal, setShowAdmissionModal] = useState(false);
+  const [selectedPatientForAdmission, setSelectedPatientForAdmission] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -239,6 +242,18 @@ const OPDQueue = () => {
     }
   };
 
+  // Handle admitting patient
+  const handleAdmitPatient = (queueItem) => {
+    setSelectedPatientForAdmission(queueItem);
+    setShowAdmissionModal(true);
+  };
+
+  const handleAdmissionSuccess = () => {
+    setSuccess('Patient admitted successfully!');
+    fetchQueue();
+    setTimeout(() => setSuccess(''), 3000);
+  };
+
   // Filter and search queue data
   const filteredQueue = queue.filter(item => {
     // Search by patient name, token number, or contact
@@ -329,10 +344,17 @@ const OPDQueue = () => {
           className: 'btn btn-primary btn-sm',
           onClick: function() { handleStartConsultation(row); }
         }, 'Start'),
-        row.status === 'in_consultation' && React.createElement('button', {
-          className: 'btn btn-success btn-sm',
-          onClick: function() { handleCompleteConsultation(row); }
-        }, 'Complete')
+        row.status === 'in_consultation' && React.createElement(React.Fragment, null,
+          React.createElement('button', {
+            className: 'btn btn-success btn-sm',
+            onClick: function() { handleCompleteConsultation(row); }
+          }, 'Complete'),
+          React.createElement('button', {
+            className: 'btn btn-warning btn-sm',
+            onClick: function() { handleAdmitPatient(row); },
+            style: { marginLeft: '8px' }
+          }, '🏥 Admit')
+        )
       );
     }
   });
@@ -742,6 +764,18 @@ const OPDQueue = () => {
             Clear Filters
           </button>
         </div>
+      )}
+
+      {/* Admission Modal */}
+      {showAdmissionModal && selectedPatientForAdmission && (
+        <AdmissionFormModal
+          opdEntry={selectedPatientForAdmission}
+          onClose={() => {
+            setShowAdmissionModal(false);
+            setSelectedPatientForAdmission(null);
+          }}
+          onSuccess={handleAdmissionSuccess}
+        />
       )}
     </div>
   );

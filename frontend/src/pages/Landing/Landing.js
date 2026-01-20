@@ -1,9 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import AppointmentBookingForm from '../../components/AppointmentBookingForm/AppointmentBookingForm';
 import './Landing.css';
 
 const Landing = () => {
   const navigate = useNavigate();
+  const [showAppointmentForm, setShowAppointmentForm] = useState(false);
 
   const services = [
     {
@@ -69,7 +71,7 @@ const Landing = () => {
             <button className="btn-secondary" onClick={() => navigate('/login')}>
               Staff Login
             </button>
-            <button className="btn-primary" onClick={() => window.location.href = '#contact'}>
+            <button className="btn-primary" onClick={() => setShowAppointmentForm(true)}>
               Book Appointment
             </button>
           </div>
@@ -87,7 +89,7 @@ const Landing = () => {
               the best medical treatment possible.
             </p>
             <div className="hero-buttons">
-              <button className="btn-primary btn-large" onClick={() => window.location.href = '#contact'}>
+              <button className="btn-primary btn-large" onClick={() => setShowAppointmentForm(true)}>
                 Book Appointment
               </button>
               <button className="btn-outline btn-large" onClick={() => window.location.href = '#services'}>
@@ -339,6 +341,17 @@ const Landing = () => {
           </div>
         </div>
       </footer>
+
+      {/* Appointment Booking Modal */}
+      {showAppointmentForm && (
+        <AppointmentBookingForm
+          onClose={() => setShowAppointmentForm(false)}
+          onSuccess={() => {
+            setShowAppointmentForm(false);
+            // You can add additional success handling here
+          }}
+        />
+      )}
     </div>
   );
 };
