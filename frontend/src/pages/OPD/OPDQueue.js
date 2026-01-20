@@ -47,6 +47,10 @@ const OPDQueue = () => {
       fetchWaitTimePrediction();
     }
     fetchDoctorsAndDepartments();
+    
+    // Auto-refresh the queue every 10 seconds
+    const interval = setInterval(fetchQueue, 10000);
+    return () => clearInterval(interval);
   }, []);
 
   // Fetch current queue from API
@@ -70,8 +74,12 @@ const OPDQueue = () => {
       console.log('Parsed queue data:', queueData);
       console.log('Queue data length:', queueData.length);
       setQueue(queueData);
+      setError('');
     } catch (error) {
       console.error('Error fetching queue:', error);
+      console.error('Error message:', error.message);
+      console.error('Error response:', error.response);
+      setError(`Failed to load OPD Queue: ${error.message}`);
       setQueue([]); // Set empty array on error
     }
   };

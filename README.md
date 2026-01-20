@@ -38,6 +38,7 @@ venv\Scripts\activate
 pip install -r requirements.txt
 python manage.py migrate
 python manage.py runserver
+py .\create_staff_users.py
 ```
 
 ### Frontend Setup

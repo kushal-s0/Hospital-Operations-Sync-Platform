@@ -1,9 +1,115 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './Landing.css';
 
 const Landing = () => {
   const navigate = useNavigate();
+  const [formData, setFormData] = useState({
+    name: '',
+    phone: '',
+    email: '',
+    department: '',
+    message: '',
+    appointmentDate: '',
+    appointmentTime: ''
+  });
+  const [loading, setLoading] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
+
+  const handleFormChange = (e) => {
+    const { id, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [id]: value
+    }));
+  };
+
+  const handleFormSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setErrorMessage('');
+    setSuccessMessage('');
+
+    try {
+      const names = formData.name.split(' ');
+      const firstName = names[0];
+      const lastName = names.slice(1).join(' ') || 'N/A';
+
+      // Format date properly - if it's in DD-MM-YYYY format, convert to YYYY-MM-DD
+      let appointmentDate = formData.appointmentDate;
+      if (appointmentDate && appointmentDate.includes('-')) {
+        const parts = appointmentDate.split('-');
+        if (parts.length === 3) {
+          // Check if it's DD-MM-YYYY format (when length is 2-digit)
+          if (parts[0].length === 2) {
+            appointmentDate = `${parts[2]}-${parts[1]}-${parts[0]}`; // Convert DD-MM-YYYY to YYYY-MM-DD
+          }
+        }
+      }
+      appointmentDate = appointmentDate || new Date().toISOString().split('T')[0];
+
+      // Format time to HH:MM:SS if needed
+      let appointmentTime = formData.appointmentTime || '10:00:00';
+      if (appointmentTime && !appointmentTime.includes(':')) {
+        appointmentTime = '10:00:00';
+      } else if (appointmentTime && appointmentTime.split(':').length === 2) {
+        appointmentTime = appointmentTime + ':00'; // Add seconds if not present
+      }
+
+      // Create appointment with patient information
+      const appointmentData = {
+        first_name: firstName,
+        last_name: lastName,
+        contact_number: formData.phone,
+        email: formData.email,
+        address: formData.message || 'N/A',
+        appointment_date: appointmentDate,
+        appointment_time: appointmentTime,
+        reason_for_visit: `Department: ${formData.department}${formData.message ? ' - ' + formData.message : ''}`,
+        status: 'Scheduled'
+      };
+
+      console.log('Sending appointment data:', appointmentData);
+
+      const appointmentResponse = await fetch('http://localhost:8000/api/receptionist/appointments/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(appointmentData)
+      });
+
+      if (!appointmentResponse.ok) {
+        const errorData = await appointmentResponse.json();
+        console.error('Error response:', errorData);
+        throw new Error(errorData.error || errorData.message || 'Failed to create appointment');
+      }
+
+      const responseData = await appointmentResponse.json();
+      console.log('Appointment created:', responseData);
+
+      setSuccessMessage('Appointment booked successfully! Our team will contact you shortly.');
+      setFormData({
+        name: '',
+        phone: '',
+        email: '',
+        department: '',
+        message: '',
+        appointmentDate: '',
+        appointmentTime: ''
+      });
+
+      setTimeout(() => {
+        setSuccessMessage('');
+      }, 5000);
+    } catch (error) {
+      console.error('Error booking appointment:', error);
+      setErrorMessage(`Error: ${error.message}. Please try again or contact us directly.`);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const services = [
     {
@@ -239,25 +345,75 @@ const Landing = () => {
             <p>Fill out the form below and we'll get back to you shortly</p>
           </div>
           <div className="contact-content">
-            <form className="contact-form" onSubmit={(e) => e.preventDefault()}>
+            <form className="contact-form" onSubmit={handleFormSubmit}>
+              {successMessage && (
+                <div style={{
+                  padding: '10px 15px',
+                  marginBottom: '15px',
+                  backgroundColor: '#d4edda',
+                  color: '#155724',
+                  borderRadius: '4px',
+                  border: '1px solid #c3e6cb'
+                }}>
+                  ✓ {successMessage}
+                </div>
+              )}
+              {errorMessage && (
+                <div style={{
+                  padding: '10px 15px',
+                  marginBottom: '15px',
+                  backgroundColor: '#f8d7da',
+                  color: '#721c24',
+                  borderRadius: '4px',
+                  border: '1px solid #f5c6cb'
+                }}>
+                  ✗ {errorMessage}
+                </div>
+              )}
               <div className="form-row">
                 <div className="form-group">
                   <label htmlFor="name">Full Name</label>
-                  <input type="text" id="name" placeholder="Enter your full name" />
+                  <input 
+                    type="text" 
+                    id="name" 
+                    placeholder="Enter your full name"
+                    value={formData.name}
+                    onChange={handleFormChange}
+                    required 
+                  />
                 </div>
                 <div className="form-group">
                   <label htmlFor="phone">Phone Number</label>
-                  <input type="tel" id="phone" placeholder="Enter your phone number" />
+                  <input 
+                    type="tel" 
+                    id="phone" 
+                    placeholder="Enter your phone number"
+                    value={formData.phone}
+                    onChange={handleFormChange}
+                    required 
+                  />
                 </div>
               </div>
               <div className="form-row">
                 <div className="form-group">
                   <label htmlFor="email">Email Address</label>
-                  <input type="email" id="email" placeholder="Enter your email" />
+                  <input 
+                    type="email" 
+                    id="email" 
+                    placeholder="Enter your email"
+                    value={formData.email}
+                    onChange={handleFormChange}
+                    required 
+                  />
                 </div>
                 <div className="form-group">
                   <label htmlFor="department">Department</label>
-                  <select id="department">
+                  <select 
+                    id="department"
+                    value={formData.department}
+                    onChange={handleFormChange}
+                    required
+                  >
                     <option value="">Select Department</option>
                     {departments.map((dept, index) => (
                       <option key={index} value={dept}>{dept}</option>
@@ -265,12 +421,42 @@ const Landing = () => {
                   </select>
                 </div>
               </div>
+              <div className="form-row">
+                <div className="form-group">
+                  <label htmlFor="appointmentDate">Preferred Date (Optional)</label>
+                  <input 
+                    type="date" 
+                    id="appointmentDate" 
+                    value={formData.appointmentDate}
+                    onChange={handleFormChange}
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="appointmentTime">Preferred Time (Optional)</label>
+                  <input 
+                    type="time" 
+                    id="appointmentTime" 
+                    value={formData.appointmentTime}
+                    onChange={handleFormChange}
+                  />
+                </div>
+              </div>
               <div className="form-group full-width">
                 <label htmlFor="message">Message (Optional)</label>
-                <textarea id="message" rows="4" placeholder="Describe your symptoms or concerns"></textarea>
+                <textarea 
+                  id="message" 
+                  rows="4" 
+                  placeholder="Describe your symptoms or concerns"
+                  value={formData.message}
+                  onChange={handleFormChange}
+                ></textarea>
               </div>
-              <button type="submit" className="btn-primary btn-large">
-                Request Appointment
+              <button 
+                type="submit" 
+                className="btn-primary btn-large"
+                disabled={loading}
+              >
+                {loading ? 'Booking...' : 'Request Appointment'}
               </button>
             </form>
             <div className="contact-info">

@@ -25,6 +25,7 @@ const Sidebar = () => {
     { path: '/opd', label: 'OPD Queue', icon: '🎫', roles: ['Admin', 'Doctor', 'Nurse', 'Receptionist'] },
     { path: '/beds', label: 'Bed Management', icon: '🛏️', roles: ['Admin', 'Nurse', 'Receptionist'] },
     { path: '/admissions', label: 'Admissions', icon: '📋', roles: ['Admin', 'Nurse', 'Receptionist'] },
+    { path: '/appointments', label: 'Appointments', icon: '📅', roles: ['Admin', 'Nurse'] },
     { path: '/inventory', label: 'Inventory', icon: '💊', roles: ['Admin', 'Pharmacist', 'Receptionist'] },
     { path: '/inter-hospital', label: 'Inter-Hospital', icon: '🏥', roles: ['Admin'] },
     { path: '/receptionist', label: 'Receptionist Portal', icon: '👨‍💼', roles: ['Admin'] },

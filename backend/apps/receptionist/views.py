@@ -5,9 +5,12 @@ from rest_framework.permissions import IsAuthenticated
 from django.db import connection
 from django.core.paginator import Paginator
 from django.utils.timezone import now
+from django.utils import timezone
 from datetime import datetime, timedelta
 
+from apps.authentication.models import Appointment
 from .serializers import (
+    AppointmentSerializer,
     BillingSerializer,
     FinancialTransactionSerializer,
     TreatmentSerializer,
@@ -365,3 +368,204 @@ class ReceptionistDashboardViewSet(viewsets.ViewSet):
                 'status': 'error',
                 'message': str(e)
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class AppointmentViewSet(viewsets.ModelViewSet):
+    """ViewSet for managing appointments (accessible to patients and staff)"""
+    
+    queryset = Appointment.objects.all()
+    serializer_class = AppointmentSerializer
+    permission_classes = []  # Allow unauthenticated access for public booking
+    
+    def create(self, request, *args, **kwargs):
+        """Create a new appointment from the booking form"""
+        try:
+            from apps.authentication.models import Patient
+            from datetime import date
+            
+            # Create a mutable copy of request data
+            appointment_data = dict(request.data)
+            
+            # Check if this is from the booking form with patient info
+            if 'first_name' in appointment_data and 'patient' not in appointment_data:
+                # Get the next patient ID
+                cursor = connection.cursor()
+                cursor.execute("SELECT MAX(patient_id) FROM patients")
+                max_id = cursor.fetchone()[0]
+                next_patient_id = (max_id or 0) + 1
+                
+                # Create a patient first with explicit ID
+                patient_data = {
+                    'patient_id': next_patient_id,
+                    'first_name': appointment_data.get('first_name', ''),
+                    'last_name': appointment_data.get('last_name', ''),
+                    'contact_number': appointment_data.get('contact_number', ''),
+                    'email': appointment_data.get('email', ''),
+                    'gender': 'M',
+                    'date_of_birth': date(2000, 1, 1),
+                    'address': appointment_data.get('address', 'N/A'),
+                    'registration_date': date.today()
+                }
+                
+                # Create patient
+                patient = Patient.objects.create(**patient_data)
+                appointment_data['patient'] = patient.patient_id
+            
+            # Get the next appointment ID
+            cursor = connection.cursor()
+            cursor.execute("SELECT MAX(appointment_id) FROM appointments")
+            max_app_id = cursor.fetchone()[0]
+            next_app_id = (max_app_id or 0) + 1
+            appointment_data['appointment_id'] = next_app_id
+            
+            serializer = self.get_serializer(data=appointment_data)
+            serializer.is_valid(raise_exception=True)
+            self.perform_create(serializer)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return Response({
+                'error': str(e)
+            }, status=status.HTTP_400_BAD_REQUEST)
+    
+    def perform_create(self, serializer):
+        """Save the appointment"""
+        serializer.save()
+    
+    @action(detail=False, methods=['get'])
+    def scheduled(self, request):
+        """Get all scheduled appointments"""
+        appointments = Appointment.objects.filter(status='Scheduled').order_by('appointment_date', 'appointment_time')
+        serializer = self.get_serializer(appointments, many=True)
+        return Response(serializer.data)
+    
+    @action(detail=False, methods=['get'])
+    def upcoming(self, request):
+        """Get upcoming appointments for today and future"""
+        from datetime import date
+        today = date.today()
+        appointments = Appointment.objects.filter(
+            appointment_date__gte=today,
+            status__in=['Scheduled']
+        ).order_by('appointment_date', 'appointment_time')
+        serializer = self.get_serializer(appointments, many=True)
+        return Response(serializer.data)
+    
+    @action(detail=True, methods=['post'])
+    def accept_to_opd(self, request, pk=None):
+        """Accept an appointment and add it to OPD queue"""
+        try:
+            from apps.authentication.models import OPDQueue, StaffUser, Department
+            from django.utils import timezone
+            
+            appointment = self.get_object()
+            print(f"\n[ACCEPT_TO_OPD] Processing appointment {appointment.appointment_id}")
+            print(f"[ACCEPT_TO_OPD] Current status: {appointment.status}")
+            
+            # Check if appointment is scheduled
+            if appointment.status != 'Scheduled':
+                return Response({
+                    'error': f'Only scheduled appointments can be moved to OPD queue. Current status: {appointment.status}'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Parse the department from appointment reason
+            # reason_for_visit might be like "Department: Dermatology" or "chest pain" etc
+            reason_text = appointment.reason_for_visit if appointment.reason_for_visit else 'General'
+            department_name = None
+            
+            # Try to extract department name if it contains "Department:"
+            if 'Department:' in reason_text:
+                # Extract text after "Department:"
+                parts = reason_text.split('Department:')
+                if len(parts) > 1:
+                    department_name = parts[1].strip().split('-')[0].strip()
+            
+            print(f"[ACCEPT_TO_OPD] Reason: {reason_text}")
+            print(f"[ACCEPT_TO_OPD] Department name extracted: {department_name}")
+            
+            # Try to find the department by name
+            department = None
+            if department_name:
+                department = Department.objects.filter(department_name__iexact=department_name).first()
+            
+            # If no department found, try with generic search or use first available
+            if not department:
+                # Try with partial match
+                if department_name:
+                    department = Department.objects.filter(department_name__icontains=department_name).first()
+                
+                # Last resort: get first available department with available doctors
+                if not department:
+                    department = Department.objects.first()
+            
+            if not department:
+                return Response({
+                    'error': 'No department found in system'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            print(f"[ACCEPT_TO_OPD] Department found: {department.department_name}")
+            
+            # Get an available doctor from the department
+            doctor = StaffUser.objects.filter(
+                department=department,
+                role='Doctor',
+                is_active=True
+            ).first()
+            
+            if not doctor:
+                return Response({
+                    'error': f'No available doctor found in {department.department_name} department'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            print(f"[ACCEPT_TO_OPD] Doctor found: {doctor.first_name} {doctor.last_name}")
+            
+            # Get next token number for this department
+            cursor = connection.cursor()
+            cursor.execute(
+                "SELECT MAX(token_number) FROM opd_queue WHERE department_id = %s",
+                [department.department_id]
+            )
+            max_token = cursor.fetchone()[0]
+            next_token = (max_token or 0) + 1
+            
+            print(f"[ACCEPT_TO_OPD] Token number: {next_token}")
+            
+            # Create OPD queue entry
+            opd_entry = OPDQueue.objects.create(
+                patient=appointment.patient,
+                doctor=doctor,
+                department=department,
+                token_number=next_token,
+                status='waiting',
+                priority=appointment.priority or 'normal',  # Use appointment priority
+                check_in_time=timezone.now(),
+                notes=f'From appointment #{appointment.appointment_id}: {appointment.reason_for_visit}',
+                created_at=timezone.now(),
+                updated_at=timezone.now()
+            )
+            
+            print(f"[ACCEPT_TO_OPD] OPD entry created with ID: {opd_entry.id}")
+            
+            # Update appointment status
+            appointment.status = 'In OPD Queue'
+            appointment.save()
+            
+            print(f"[ACCEPT_TO_OPD] Appointment status updated to 'In OPD Queue'")
+            
+            return Response({
+                'status': 'success',
+                'message': f'Appointment moved to OPD queue',
+                'token_number': next_token,
+                'doctor': doctor.first_name + ' ' + doctor.last_name,
+                'department': department.department_name,
+                'opd_queue_id': opd_entry.id
+            }, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return Response({
+                'error': str(e)
+            }, status=status.HTTP_400_BAD_REQUEST)
+

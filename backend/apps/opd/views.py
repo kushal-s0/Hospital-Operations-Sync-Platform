@@ -269,13 +269,17 @@ class OPDQueueViewSet(viewsets.ModelViewSet):
     
     def get_queryset(self):
         """Filter queryset based on user role - doctors see only their patients."""
-        queryset = OPDQueue.objects.all()
+        queryset = OPDQueue.objects.all().order_by('-check_in_time')
         
         # Check if user is authenticated
-        if self.request.user and self.request.user.is_authenticated:
-            # If user is a doctor, filter to show only patients assigned to them
-            if self.request.user.role == 'Doctor':
-                queryset = queryset.filter(doctor_id=self.request.user.staff_id)
+        try:
+            if self.request.user and self.request.user.is_authenticated:
+                # If user is a doctor, filter to show only patients assigned to them
+                if hasattr(self.request.user, 'role') and self.request.user.role == 'Doctor':
+                    queryset = queryset.filter(doctor_id=self.request.user.staff_id)
+        except Exception as e:
+            print(f"Error in get_queryset: {e}")
+            pass  # Return all if there's an error
         
         return queryset
     
@@ -284,10 +288,17 @@ class OPDQueueViewSet(viewsets.ModelViewSet):
         queryset = self.filter_queryset(self.get_queryset())
         
         # Skip wait time calculation for doctors
-        if not (request.user and request.user.is_authenticated and request.user.role == 'Doctor'):
+        try:
+            is_doctor = (request.user and request.user.is_authenticated and 
+                        hasattr(request.user, 'role') and request.user.role == 'Doctor')
+        except:
+            is_doctor = False
+        
+        if not is_doctor:
             # Calculate estimated wait time for each waiting patient (non-doctors only)
             for queue_entry in queryset:
                 if queue_entry.status == 'waiting':
+
                     estimated_wait = calculate_patient_wait_time(queue_entry)
                     queue_entry.estimated_wait_time = estimated_wait
                     # Update in database

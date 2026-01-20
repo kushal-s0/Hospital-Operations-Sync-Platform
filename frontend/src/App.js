@@ -9,6 +9,7 @@ import Dashboard from './pages/Dashboard/Dashboard';
 import OPDQueue from './pages/OPD/OPDQueue';
 import BedManagement from './pages/Beds/BedManagement';
 import Admissions from './pages/Admissions/Admissions';
+import Appointments from './pages/Appointments/Appointments';
 import Inventory from './pages/Inventory/Inventory';
 import InterHospital from './pages/InterHospital/InterHospital';
 import ReceptionistDashboard from './pages/Receptionist/ReceptionistDashboard';
@@ -63,6 +64,14 @@ function App() {
           <RoleBasedRoute allowedRoles={['Admin', 'Nurse', 'Receptionist']}>
             <Layout>
               <Admissions />
+            </Layout>
+          </RoleBasedRoute>
+        } />
+        
+        <Route path="/appointments" element={
+          <RoleBasedRoute allowedRoles={['Admin', 'Nurse']}>
+            <Layout>
+              <Appointments />
             </Layout>
           </RoleBasedRoute>
         } />

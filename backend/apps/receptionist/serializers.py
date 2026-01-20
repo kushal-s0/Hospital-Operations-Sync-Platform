@@ -1,5 +1,29 @@
 from rest_framework import serializers
 from django.db import connection
+from apps.authentication.models import Appointment
+
+
+class AppointmentSerializer(serializers.ModelSerializer):
+    """Serializer for Appointment model"""
+    patient_name = serializers.SerializerMethodField()
+    doctor_name = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Appointment
+        fields = ['appointment_id', 'patient', 'patient_name', 'doctor', 'doctor_name', 
+                  'visit', 'appointment_date', 'appointment_time', 'reason_for_visit', 
+                  'status', 'priority', 'created_at', 'updated_at']
+        read_only_fields = ['created_at', 'updated_at']
+    
+    def get_patient_name(self, obj):
+        if obj.patient:
+            return f"{obj.patient.first_name} {obj.patient.last_name}".strip()
+        return None
+    
+    def get_doctor_name(self, obj):
+        if obj.doctor:
+            return f"{obj.doctor.doctor_id}"
+        return None
 
 
 class BillingSerializer(serializers.Serializer):

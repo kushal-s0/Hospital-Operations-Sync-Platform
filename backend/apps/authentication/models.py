@@ -293,8 +293,15 @@ class Appointment(models.Model):
     """Model representing an appointment (mapped to MySQL appointments table)."""
     STATUS_CHOICES = [
         ('Scheduled', 'Scheduled'),
+        ('In OPD Queue', 'In OPD Queue'),
         ('Completed', 'Completed'),
         ('Cancelled', 'Cancelled'),
+    ]
+    
+    PRIORITY_CHOICES = [
+        ('normal', 'Normal'),
+        ('urgent', 'Urgent'),
+        ('emergency', 'Emergency'),
     ]
 
     appointment_id = models.IntegerField(primary_key=True)
@@ -305,6 +312,7 @@ class Appointment(models.Model):
     appointment_time = models.TimeField(null=True)
     reason_for_visit = models.CharField(max_length=200, null=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, null=True)
+    priority = models.CharField(max_length=20, choices=PRIORITY_CHOICES, default='normal', null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     admin_id = models.IntegerField(null=True)
