@@ -1,9 +1,17 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import AppointmentForm from '../Appointments/AppointmentForm';
 import './Landing.css';
 
 const Landing = () => {
   const navigate = useNavigate();
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+
+  const handleAppointmentSuccess = (result) => {
+    setShowSuccessMessage(true);
+    // Scroll to top to show success message
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   const services = [
     {
@@ -234,45 +242,14 @@ const Landing = () => {
       <section id="contact" className="contact-section">
         <div className="section-container">
           <div className="section-header light">
-            <span className="section-tag">Contact Us</span>
-            <h2>Book an Appointment</h2>
-            <p>Fill out the form below and we'll get back to you shortly</p>
+            <span className="section-tag">Book Appointment</span>
+            <h2>Schedule Your Visit</h2>
+            <p>Book an appointment with our expert doctors</p>
           </div>
           <div className="contact-content">
-            <form className="contact-form" onSubmit={(e) => e.preventDefault()}>
-              <div className="form-row">
-                <div className="form-group">
-                  <label htmlFor="name">Full Name</label>
-                  <input type="text" id="name" placeholder="Enter your full name" />
-                </div>
-                <div className="form-group">
-                  <label htmlFor="phone">Phone Number</label>
-                  <input type="tel" id="phone" placeholder="Enter your phone number" />
-                </div>
-              </div>
-              <div className="form-row">
-                <div className="form-group">
-                  <label htmlFor="email">Email Address</label>
-                  <input type="email" id="email" placeholder="Enter your email" />
-                </div>
-                <div className="form-group">
-                  <label htmlFor="department">Department</label>
-                  <select id="department">
-                    <option value="">Select Department</option>
-                    {departments.map((dept, index) => (
-                      <option key={index} value={dept}>{dept}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              <div className="form-group full-width">
-                <label htmlFor="message">Message (Optional)</label>
-                <textarea id="message" rows="4" placeholder="Describe your symptoms or concerns"></textarea>
-              </div>
-              <button type="submit" className="btn-primary btn-large">
-                Request Appointment
-              </button>
-            </form>
+            <div className="appointment-form-wrapper">
+              <AppointmentForm onSuccess={handleAppointmentSuccess} publicMode={true} />
+            </div>
             <div className="contact-info">
               <div className="info-card">
                 <div className="info-icon">📍</div>

@@ -210,3 +210,29 @@ def department_list(request):
             {'error': f'Failed to fetch departments: {str(e)}'},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def public_doctors_list(request):
+    """
+    Public endpoint to get list of all active doctors for appointment booking.
+    No authentication required.
+    """
+    try:
+        doctors = StaffUser.objects.filter(role='Doctor', is_active=True).order_by('first_name', 'last_name')
+        
+        doctors_data = [{
+            'staff_id': d.staff_id,
+            'first_name': d.first_name,
+            'last_name': d.last_name,
+            'full_name': d.full_name,
+            'department_id': d.department_id,
+        } for d in doctors]
+        
+        return Response(doctors_data, status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response(
+            {'error': f'Failed to fetch doctors: {str(e)}'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )

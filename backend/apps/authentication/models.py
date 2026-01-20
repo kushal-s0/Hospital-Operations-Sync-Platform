@@ -94,7 +94,7 @@ class StaffUser(models.Model):
 
 class Doctor(models.Model):
     """Model representing a doctor (extends StaffUser)."""
-    doctor_id = models.IntegerField(primary_key=True)
+    staff = models.OneToOneField(StaffUser, on_delete=models.CASCADE, primary_key=True, db_column='doctor_id', related_name='doctor_profile')
     specialization = models.CharField(max_length=100, null=True)
     years_experience = models.IntegerField(null=True)
     admin_id = models.IntegerField(null=True)
@@ -104,8 +104,24 @@ class Doctor(models.Model):
         db_table = 'doctors'
         managed = False
 
+    @property
+    def doctor_id(self):
+        return self.staff.staff_id if self.staff else None
+    
+    @property
+    def first_name(self):
+        return self.staff.first_name if self.staff else None
+    
+    @property
+    def last_name(self):
+        return self.staff.last_name if self.staff else None
+    
+    @property
+    def full_name(self):
+        return self.staff.full_name if self.staff else f"Doctor {self.staff_id}"
+
     def __str__(self):
-        return f"Doctor {self.doctor_id}"
+        return self.full_name
 
 
 class Patient(models.Model):
@@ -303,6 +319,8 @@ class Appointment(models.Model):
     visit = models.ForeignKey(Visit, on_delete=models.CASCADE, db_column='visit_id', null=True)
     appointment_date = models.DateField(null=True)
     appointment_time = models.TimeField(null=True)
+    time_slot = models.CharField(max_length=50, null=True, blank=True, help_text="Time slot (e.g., 09:00-09:30)")
+    age = models.IntegerField(null=True, blank=True, help_text="Patient age at time of appointment")
     reason_for_visit = models.CharField(max_length=200, null=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, null=True)
     created_at = models.DateTimeField(auto_now_add=True)

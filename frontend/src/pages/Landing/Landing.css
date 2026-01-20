@@ -540,6 +540,32 @@
   gap: 40px;
 }
 
+.appointment-form-wrapper {
+  background: white;
+  border-radius: 16px;
+  padding: 0;
+  overflow: hidden;
+}
+
+.appointment-form-wrapper .appointment-form-container {
+  background: white;
+  padding: 40px;
+  box-shadow: none;
+  border-radius: 0;
+}
+
+.appointment-form-wrapper .appointment-form-container h2 {
+  margin-top: 0;
+  color: #667eea;
+  font-size: 28px;
+}
+
+.appointment-form-wrapper .form-subtitle {
+  color: #666;
+  margin-bottom: 24px;
+  font-size: 15px;
+}
+
 .contact-form {
   background: white;
   padding: 40px;

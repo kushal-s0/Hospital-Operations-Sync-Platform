@@ -1,14 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { Table, StatusBadge } from '../../components/Common';
 import { opdAPI } from '../../services/api';
+import AppointmentsList from '../Appointments/AppointmentsList';
 import './OPDQueue.css';
 
 const OPDQueue = () => {
   const [queue, setQueue] = useState([]);
+  const [appointments, setAppointments] = useState([]);
   const [waitTimePrediction, setWaitTimePrediction] = useState(null);
-  const [showPredictionPanel, setShowPredictionPanel] = useState(false);
   const [predictionLoading, setPredictionLoading] = useState(false);
+  const [showPredictionPanel, setShowPredictionPanel] = useState(false);
   const [showAddPatientForm, setShowAddPatientForm] = useState(false);
+  const [showAppointments, setShowAppointments] = useState(false);
+  const [appointmentsLoading, setAppointmentsLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -43,10 +47,12 @@ const OPDQueue = () => {
   const fetchQueue = async () => {
     try {
       const response = await opdAPI.getAll();
+      console.log('🔍 OPD Queue fetch response:', response.data);
       // Handle both array and paginated response formats
       const queueData = Array.isArray(response.data) 
         ? response.data 
         : (response.data.results || []);
+      console.log('✅ Queue data after parsing:', queueData.length, 'entries');
       setQueue(queueData);
     } catch (error) {
       console.error('Error fetching queue:', error);
@@ -124,6 +130,77 @@ const OPDQueue = () => {
       console.error('Error fetching wait time prediction:', error);
     }
     setPredictionLoading(false);
+  };
+
+  // Fetch upcoming appointments
+  const fetchAppointments = async () => {
+    setAppointmentsLoading(true);
+    try {
+      const token = localStorage.getItem('access_token');
+      const response = await fetch('http://localhost:8000/api/opd/appointments/?status=Scheduled', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const appointmentsList = Array.isArray(data) ? data : (data.results || []);
+        setAppointments(appointmentsList);
+      } else {
+        setError('Failed to fetch appointments');
+      }
+    } catch (err) {
+      console.error('Error fetching appointments:', err);
+      setError('Error fetching appointments');
+    } finally {
+      setAppointmentsLoading(false);
+    }
+  };
+
+  // Handle opening appointments modal
+  const handleCheckAppointments = () => {
+    fetchAppointments();
+    setShowAppointments(true);
+  };
+
+  // Handle adding appointment to queue
+  const handleAddAppointmentToQueue = async (appointment) => {
+    setLoading(true);
+    try {
+      const token = localStorage.getItem('access_token');
+      const response = await fetch(
+        `http://localhost:8000/api/opd/appointments/${appointment.appointment_id}/add_to_queue/`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            priority: 'normal',
+            notes: `From appointment for ${appointment.patient_name}`
+          })
+        }
+      );
+
+      if (response.ok) {
+        const result = await response.json();
+        setSuccess(`✅ Patient ${appointment.patient_name} added to queue! Token: #${result.queue_entry.token_number}`);
+        fetchQueue();
+        fetchAppointments();
+        setTimeout(() => setSuccess(''), 5000);
+      } else {
+        const errorData = await response.json();
+        setError(errorData.error || 'Failed to add to queue');
+      }
+    } catch (err) {
+      console.error('Error:', err);
+      setError('Error adding to queue');
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Handle form input changes
@@ -304,12 +381,20 @@ const OPDQueue = () => {
             🤖 {showPredictionPanel ? 'Hide' : 'Show'} Wait Time Predictor
           </button>
           {isNurse && (
-            <button 
-              className="btn btn-primary"
-              onClick={() => setShowAddPatientForm(true)}
-            >
-              + Add Patient
-            </button>
+            <>
+              <button 
+                className="btn btn-info"
+                onClick={handleCheckAppointments}
+              >
+                📋 Check Appointments
+              </button>
+              <button 
+                className="btn btn-primary"
+                onClick={() => setShowAddPatientForm(true)}
+              >
+                + Add Patient
+              </button>
+            </>
           )}
         </div>
       </div>
@@ -317,12 +402,45 @@ const OPDQueue = () => {
       {/* Success/Error Messages */}
       {success && (
         <div className="alert alert-success">
-          ✅ {success}
+          {success}
         </div>
       )}
       {error && (
         <div className="alert alert-error">
-          ❌ {error}
+          {error}
+        </div>
+      )}
+
+      {/* Appointments List Modal */}
+      {showAppointments && isNurse && (
+        <div className="modal-overlay" onClick={() => setShowAppointments(false)}>
+          <div className="modal-content large" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>📋 Scheduled Appointments</h2>
+              <button 
+                className="close-btn"
+                onClick={() => setShowAppointments(false)}
+              >
+                ×
+              </button>
+            </div>
+            
+            <div className="modal-body">
+              {appointmentsLoading ? (
+                <div className="loading-state">
+                  <p>Loading appointments...</p>
+                </div>
+              ) : (
+                <AppointmentsList
+                  appointments={appointments}
+                  onAddToQueue={handleAddAppointmentToQueue}
+                  onEdit={() => {}}
+                  onCancel={() => {}}
+                  loading={loading}
+                />
+              )}
+            </div>
+          </div>
         </div>
       )}
 

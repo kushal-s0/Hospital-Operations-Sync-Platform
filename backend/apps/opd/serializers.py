@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from .models import OPDQueue, OPDStatistics
-from apps.authentication.models import Visit, Appointment, Patient, StaffUser, Department
+from apps.authentication.models import Visit, Appointment, Patient, StaffUser, Department, Doctor
 from apps.patients.serializers import PatientSerializer
 
 
@@ -192,14 +192,95 @@ class AppointmentSerializer(serializers.ModelSerializer):
     """Serializer for Appointment model."""
     
     patient_name = serializers.SerializerMethodField()
+    doctor_name = serializers.SerializerMethodField()
+    contact_number = serializers.SerializerMethodField()
+    doctor_id = serializers.IntegerField(write_only=True, required=False)
+    doctor_name_input = serializers.CharField(write_only=True, required=False)
+    
+    # Fields for creating new patients
+    patient_first_name = serializers.CharField(write_only=True, required=False)
+    patient_last_name = serializers.CharField(write_only=True, required=False)
+    contact_number_input = serializers.CharField(write_only=True, required=False)
     
     class Meta:
         model = Appointment
-        fields = ['appointment_id', 'patient', 'patient_name', 'doctor', 'visit',
-                  'appointment_date', 'appointment_time', 'reason_for_visit',
+        fields = ['appointment_id', 'patient', 'patient_name', 'doctor', 'doctor_name', 
+                  'doctor_id', 'doctor_name_input', 'patient_first_name', 'patient_last_name',
+                  'contact_number', 'contact_number_input', 'visit', 'appointment_date', 
+                  'appointment_time', 'time_slot', 'age', 'reason_for_visit',
                   'status', 'created_at', 'updated_at', 'admin_id']
+        extra_kwargs = {
+            'doctor': {'read_only': True},
+            'patient': {'read_only': True},
+            'appointment_id': {'read_only': True},
+        }
     
     def get_patient_name(self, obj):
         if obj.patient:
             return f"{obj.patient.first_name} {obj.patient.last_name}"
         return None
+    
+    def get_doctor_name(self, obj):
+        if obj.doctor and obj.doctor.staff:
+            return f"{obj.doctor.staff.first_name} {obj.doctor.staff.last_name}"
+        return None
+    
+    def get_contact_number(self, obj):
+        if obj.patient:
+            return obj.patient.contact_number
+        return None
+    
+    def create(self, validated_data):
+        """Handle doctor and patient assignment during creation."""
+        doctor_id = validated_data.pop('doctor_id', None)
+        doctor_name_input = validated_data.pop('doctor_name_input', None)
+        
+        # Handle patient creation
+        patient_first_name = validated_data.pop('patient_first_name', None)
+        patient_last_name = validated_data.pop('patient_last_name', None)
+        contact_number = validated_data.pop('contact_number_input', None)
+        
+        # Create or get patient
+        if patient_first_name or patient_last_name:
+            from django.utils import timezone
+            from django.db.models import Max
+            
+            # Get the next patient_id (in case auto_increment isn't working)
+            max_patient_id = Patient.objects.aggregate(Max('patient_id'))['patient_id__max']
+            next_patient_id = (max_patient_id or 0) + 1
+            
+            patient = Patient(
+                patient_id=next_patient_id,
+                first_name=patient_first_name,
+                last_name=patient_last_name,
+                contact_number=contact_number,
+                registration_date=timezone.now().date()
+            )
+            patient.save()
+            validated_data['patient'] = patient
+        
+        # Handle doctor - try to find by staff_id (which is the doctor_id in the UI)
+        doctor_assigned = False
+        if doctor_id:
+            try:
+                # doctor_id from frontend is actually staff_id
+                doctor = Doctor.objects.get(staff_id=doctor_id)
+                validated_data['doctor'] = doctor
+                doctor_assigned = True
+            except Doctor.DoesNotExist:
+                pass
+        
+        if not doctor_assigned and doctor_name_input:
+            # Try to find doctor by name in staff users
+            staff_users = StaffUser.objects.filter(role='Doctor')
+            for staff in staff_users:
+                if doctor_name_input.lower() in staff.full_name.lower():
+                    try:
+                        doctor = Doctor.objects.get(staff=staff)
+                        validated_data['doctor'] = doctor
+                        doctor_assigned = True
+                        break
+                    except Doctor.DoesNotExist:
+                        pass
+        
+        return super().create(validated_data)

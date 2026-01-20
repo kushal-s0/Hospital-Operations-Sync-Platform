@@ -1,12 +1,12 @@
 from rest_framework import viewsets, status
 from rest_framework.decorators import action, api_view, permission_classes
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from django.utils import timezone
-from django.db.models import Avg, Count, Q
+from django.db.models import Avg, Count, Q, Max
 from .models import OPDQueue, OPDStatistics
-from .serializers import OPDQueueSerializer, OPDStatisticsSerializer
-from apps.authentication.models import StaffUser
+from .serializers import OPDQueueSerializer, OPDStatisticsSerializer, AppointmentSerializer
+from apps.authentication.models import StaffUser, Patient, Doctor, Appointment
 import joblib
 import numpy as np
 import os
@@ -263,8 +263,9 @@ def get_wait_recommendation(wait_time):
 class OPDQueueViewSet(viewsets.ModelViewSet):
     """ViewSet for OPDQueue CRUD operations."""
     
-    queryset = OPDQueue.objects.all()
+    queryset = OPDQueue.objects.all().order_by('-created_at')
     serializer_class = OPDQueueSerializer
+    pagination_class = None  # Disable pagination to show all entries
     
     def list(self, request, *args, **kwargs):
         """Override list to add ML-predicted wait times for each patient."""
@@ -390,3 +391,274 @@ class OPDStatisticsViewSet(viewsets.ReadOnlyModelViewSet):
     
     queryset = OPDStatistics.objects.all()
     serializer_class = OPDStatisticsSerializer
+
+
+# =============================================================================
+# APPOINTMENT VIEWS FOR OPD SCHEDULING
+# =============================================================================
+
+from apps.authentication.models import Appointment
+from .serializers import AppointmentSerializer
+
+class AppointmentViewSet(viewsets.ModelViewSet):
+    """ViewSet for Appointment CRUD operations and listing."""
+    
+    queryset = Appointment.objects.all().order_by('-appointment_date', '-appointment_time')
+    serializer_class = AppointmentSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def list(self, request, *args, **kwargs):
+        """List all appointments or filter by status."""
+        queryset = self.get_queryset()
+        
+        # Filter by status if provided
+        status_filter = request.query_params.get('status', None)
+        if status_filter:
+            queryset = queryset.filter(status=status_filter)
+        
+        # Filter by date range if provided
+        from_date = request.query_params.get('from_date', None)
+        to_date = request.query_params.get('to_date', None)
+        
+        if from_date:
+            from datetime import datetime
+            queryset = queryset.filter(appointment_date__gte=from_date)
+        if to_date:
+            from datetime import datetime
+            queryset = queryset.filter(appointment_date__lte=to_date)
+        
+        # Filter by doctor if provided
+        doctor_id = request.query_params.get('doctor_id', None)
+        if doctor_id:
+            queryset = queryset.filter(doctor_id=doctor_id)
+        
+        # Filter by patient if provided
+        patient_id = request.query_params.get('patient_id', None)
+        if patient_id:
+            queryset = queryset.filter(patient_id=patient_id)
+        
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+    
+    @action(detail=False, methods=['get'])
+    def upcoming(self, request):
+        """Get upcoming appointments for today and future."""
+        from django.utils import timezone
+        today = timezone.now().date()
+        
+        appointments = Appointment.objects.filter(
+            appointment_date__gte=today,
+            status='Scheduled'
+        ).order_by('appointment_date', 'appointment_time')
+        
+        serializer = self.get_serializer(appointments, many=True)
+        return Response(serializer.data)
+    
+    @action(detail=False, methods=['get'])
+    def today(self, request):
+        """Get appointments for today only."""
+        from django.utils import timezone
+        today = timezone.now().date()
+        
+        appointments = Appointment.objects.filter(
+            appointment_date=today,
+            status='Scheduled'
+        ).order_by('appointment_time')
+        
+        serializer = self.get_serializer(appointments, many=True)
+        return Response(serializer.data)
+    
+    @action(detail=True, methods=['post'])
+    def add_to_queue(self, request, pk=None):
+        """
+        Add appointment to OPD queue when patient checks in.
+        Convert appointment to active queue entry.
+        """
+        appointment = self.get_object()
+        
+        if appointment.status == 'Completed' or appointment.status == 'Cancelled':
+            return Response(
+                {'error': f'Cannot add {appointment.status} appointment to queue'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            # Create OPD queue entry from appointment
+            from django.db.models import Max
+            
+            # Generate token number
+            max_token = OPDQueue.objects.aggregate(Max('token_number'))['token_number__max']
+            token_number = (max_token or 0) + 1
+            
+            # Determine priority from urgency or appointment details
+            priority = request.data.get('priority', 'normal')
+            notes = request.data.get('notes', f'From appointment: {appointment.reason_for_visit}')
+            
+            # Get next ID for opd_queue (in case managed=False causes issues)
+            from django.db.models import Max
+            max_id = OPDQueue.objects.aggregate(Max('id'))['id__max']
+            next_id = (max_id or 0) + 1
+            
+            # Create queue entry with explicit ID
+            queue_entry = OPDQueue(
+                id=next_id,
+                patient=appointment.patient,
+                doctor=appointment.doctor.staff if appointment.doctor else None,
+                department=appointment.doctor.staff.department if (appointment.doctor and appointment.doctor.staff) else None,
+                token_number=token_number,
+                status='waiting',
+                priority=priority,
+                check_in_time=timezone.now(),
+                notes=notes,
+                created_at=timezone.now(),
+                updated_at=timezone.now()
+            )
+            queue_entry.save()
+            
+            # Update appointment status to Completed (or you can use a custom status)
+            appointment.status = 'Completed'
+            appointment.visit = None  # or link to the visit if needed
+            appointment.save()
+            
+            # Calculate initial wait time
+            estimated_wait = calculate_patient_wait_time(queue_entry)
+            queue_entry.estimated_wait_time = estimated_wait
+            queue_entry.save(update_fields=['estimated_wait_time'])
+            
+            # Serialize and return both queue entry and updated appointment
+            queue_serializer = OPDQueueSerializer(queue_entry)
+            appointment_serializer = self.get_serializer(appointment)
+            
+            return Response({
+                'message': 'Patient added to OPD queue successfully',
+                'queue_entry': queue_serializer.data,
+                'appointment': appointment_serializer.data
+            }, status=status.HTTP_201_CREATED)
+            
+        except Exception as e:
+            print(f"Error adding appointment to queue: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            return Response(
+                {'error': f'Failed to add to queue: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    
+    @action(detail=True, methods=['post'])
+    def cancel(self, request, pk=None):
+        """Cancel an appointment."""
+        appointment = self.get_object()
+        appointment.status = 'Cancelled'
+        appointment.save()
+        
+        serializer = self.get_serializer(appointment)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+# =============================================================================
+# PUBLIC APPOINTMENT BOOKING ENDPOINT
+# =============================================================================
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def public_book_appointment(request):
+    """
+    Public endpoint for patients to book appointments without authentication.
+    
+    Request body:
+    {
+        "patient_first_name": "John",
+        "patient_last_name": "Doe",
+        "contact_number": "1234567890",
+        "age": 30,
+        "doctor_id": 1,
+        "appointment_date": "2026-01-25",
+        "appointment_time": "10:00:00",
+        "time_slot": "10:00-10:30",
+        "reason_for_visit": "Regular checkup"
+    }
+    """
+    try:
+        # Validate required fields
+        required_fields = ['patient_first_name', 'patient_last_name', 'age', 'doctor_id', 
+                          'appointment_date', 'appointment_time']
+        
+        for field in required_fields:
+            if field not in request.data or not request.data.get(field):
+                return Response(
+                    {'error': f'{field} is required'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        
+        # Get doctor
+        doctor_id = request.data.get('doctor_id')
+        try:
+            doctor = Doctor.objects.get(staff_id=doctor_id)
+        except Doctor.DoesNotExist:
+            return Response(
+                {'error': 'Doctor not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Create or get patient
+        patient_first_name = request.data.get('patient_first_name')
+        patient_last_name = request.data.get('patient_last_name')
+        contact_number = request.data.get('contact_number', '')
+        
+        # Get the next patient_id
+        max_patient_id = Patient.objects.aggregate(Max('patient_id'))['patient_id__max']
+        next_patient_id = (max_patient_id or 0) + 1
+        
+        # Create new patient (only use valid Patient model fields)
+        patient = Patient.objects.create(
+            patient_id=next_patient_id,
+            first_name=patient_first_name,
+            last_name=patient_last_name,
+            contact_number=contact_number,
+            date_of_birth=None,
+            gender=None,
+            address=None,
+            email=None,
+            registration_date=timezone.now().date(),
+            admin_id=None
+        )
+        
+        # Get the next appointment_id
+        max_appointment_id = Appointment.objects.aggregate(Max('appointment_id'))['appointment_id__max']
+        next_appointment_id = (max_appointment_id or 0) + 1
+        
+        # Create appointment
+        appointment = Appointment.objects.create(
+            appointment_id=next_appointment_id,
+            patient=patient,
+            doctor=doctor,
+            appointment_date=request.data.get('appointment_date'),
+            appointment_time=request.data.get('appointment_time'),
+            time_slot=request.data.get('time_slot', ''),
+            age=request.data.get('age'),
+            reason_for_visit=request.data.get('reason_for_visit', ''),
+            status='Scheduled',
+            admin_id=None
+        )
+        
+        # Serialize response
+        serializer = AppointmentSerializer(appointment)
+        
+        return Response({
+            'message': 'Appointment booked successfully!',
+            'appointment': serializer.data
+        }, status=status.HTTP_201_CREATED)
+        
+    except Exception as e:
+        print(f"Error creating public appointment: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return Response(
+            {'error': f'Failed to book appointment: {str(e)}'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )

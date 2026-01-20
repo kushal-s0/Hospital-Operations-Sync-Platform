@@ -6,6 +6,7 @@ import Landing from './pages/Landing/Landing';
 import Login from './pages/Login/Login';
 import Dashboard from './pages/Dashboard/Dashboard';
 import OPDQueue from './pages/OPD/OPDQueue';
+import Appointments from './pages/Appointments/Appointments';
 import BedManagement from './pages/Beds/BedManagement';
 import Admissions from './pages/Admissions/Admissions';
 import Inventory from './pages/Inventory/Inventory';
@@ -41,6 +42,14 @@ function App() {
           <PrivateRoute>
             <Layout>
               <OPDQueue />
+            </Layout>
+          </PrivateRoute>
+        } />
+        
+        <Route path="/appointments" element={
+          <PrivateRoute>
+            <Layout>
+              <Appointments />
             </Layout>
           </PrivateRoute>
         } />
