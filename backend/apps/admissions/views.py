@@ -3,9 +3,9 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.utils import timezone
 from django.db import transaction, models
-from apps.authentication.models import Admission, Bed, OPDQueue, Patient, Doctor
-from .models import AdmissionRule
-from .serializers import AdmissionSerializer, AdmissionRuleSerializer
+from apps.authentication.models import Admission, OPDQueue, Bed, StaffUser
+from .serializers import AdmissionSerializer
+from apps.utils import get_ist_now, get_ist_today
 
 
 class AdmissionViewSet(viewsets.ModelViewSet):
@@ -26,7 +26,7 @@ class AdmissionViewSet(viewsets.ModelViewSet):
         """Discharge a patient."""
         admission = self.get_object()
         admission.status = 'Discharged'
-        admission.discharge_time = timezone.now()
+        admission.discharge_time = get_ist_now()
         admission.save()
         
         # Set bed to maintenance status after discharge
@@ -91,18 +91,26 @@ class AdmissionViewSet(viewsets.ModelViewSet):
                 # Get doctor_id from OPD entry
                 doctor_id = opd_entry.doctor.staff_id
                 
-                # Create admission record
-                admission = Admission(
-                    admission_id=next_admission_id,
-                    patient_id=opd_entry.patient.patient_id,
-                    bed_id=bed_id,
-                    doctor_id=doctor_id,
-                    admission_time=timezone.now(),
-                    condition_level=condition_level,
-                    status='Active',
-                    admin_id=request.user.staff_id if hasattr(request.user, 'staff_id') else None
-                )
-                admission.save()
+                # Create admission record using raw SQL to avoid managed=False issues
+                from django.db import connection
+                
+                with connection.cursor() as cursor:
+                    cursor.execute("""
+                        INSERT INTO admissions 
+                        (admission_id, patient_id, doctor_id, admission_time, diagnosis, 
+                         treatment_plan, bed_id, condition_level, status)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    """, [
+                        next_admission_id,
+                        opd_entry.patient_id,
+                        doctor_id,
+                        get_ist_now(),
+                        f"Admitted from OPD (Token: {opd_entry.token_number})",
+                        admission_notes or "Initial admission",
+                        bed_id,
+                        condition_level,
+                        'Active'
+                    ])
                 
                 # Update bed status to Occupied
                 bed.status = 'Occupied'
@@ -110,9 +118,12 @@ class AdmissionViewSet(viewsets.ModelViewSet):
                 
                 # Update OPD queue status to completed
                 opd_entry.status = 'completed'
-                opd_entry.consultation_end_time = timezone.now()
+                opd_entry.consultation_end_time = get_ist_now()
                 opd_entry.notes = f"{opd_entry.notes}\n\nPatient admitted to bed {bed_id}. {admission_notes}".strip()
                 opd_entry.save()
+                
+                # Get the created admission for response
+                admission = Admission.objects.get(admission_id=next_admission_id)
                 
                 # Return success response
                 serializer = AdmissionSerializer(admission)
@@ -127,30 +138,34 @@ class AdmissionViewSet(viewsets.ModelViewSet):
             return Response({
                 'error': str(e)
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    
-    @action(detail=False, methods=['post'])
-    def match_bed(self, request):
-        """Match patient requirements to available beds using rules."""
-        patient_requirements = request.data
-        
-        # Get active rules sorted by priority
-        rules = AdmissionRule.objects.filter(is_active=True)
-        
-        # Find matching beds based on rules
-        recommended_beds = Bed.objects.filter(status='Available')
-        
-        # Apply rule-based filtering (simplified)
-        bed_type = patient_requirements.get('bed_type')
-        if bed_type:
-            recommended_beds = recommended_beds.filter(bed_type=bed_type)
-        
-        from apps.beds.serializers import BedSerializer
-        serializer = BedSerializer(recommended_beds[:10], many=True)
-        return Response(serializer.data)
 
 
-class AdmissionRuleViewSet(viewsets.ModelViewSet):
-    """ViewSet for AdmissionRule CRUD operations."""
-    
-    queryset = AdmissionRule.objects.all()
-    serializer_class = AdmissionRuleSerializer
+# Commented out AdmissionRule ViewSets as the model doesn't exist
+# If you need admission rules functionality, create the AdmissionRule model first
+
+# @action(detail=False, methods=['post'])
+# def match_bed(self, request):
+#     """Match patient requirements to available beds using rules."""
+#     patient_requirements = request.data
+#     
+#     # Get active rules sorted by priority
+#     rules = AdmissionRule.objects.filter(is_active=True)
+#     
+#     # Find matching beds based on rules
+#     recommended_beds = Bed.objects.filter(status='Available')
+#     
+#     # Apply rule-based filtering (simplified)
+#     bed_type = patient_requirements.get('bed_type')
+#     if bed_type:
+#         recommended_beds = recommended_beds.filter(bed_type=bed_type)
+#     
+#     from apps.beds.serializers import BedSerializer
+#     serializer = BedSerializer(recommended_beds[:10], many=True)
+#     return Response(serializer.data)
+
+
+# class AdmissionRuleViewSet(viewsets.ModelViewSet):
+#     """ViewSet for AdmissionRule CRUD operations."""
+#     
+#     queryset = AdmissionRule.objects.all()
+#     serializer_class = AdmissionRuleSerializer
