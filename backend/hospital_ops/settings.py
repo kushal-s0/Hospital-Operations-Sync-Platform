@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     'apps.interhospital',
     'apps.receptionist',
     'apps.appointments',
+    'apps.payments',
 ]
 
 MIDDLEWARE = [
@@ -172,4 +173,13 @@ HOSPITAL_LOCATION = {
 # OpenWeatherMap API Key
 # API key configured for real-time weather and AQI data
 OPENWEATHER_API_KEY = config('OPENWEATHER_API_KEY', default='YOUR_OPENWEATHER_API_KEY')
+
+# =============================================================================
+# RAZORPAY PAYMENT GATEWAY SETTINGS
+# =============================================================================
+
+# Razorpay API Keys (Test Mode)
+RAZORPAY_PUBLIC_KEY = config('RAZORPAY_PUBLIC_KEY', default='')
+RAZORPAY_SECRET_KEY = config('RAZORPAY_SECRET_KEY', default='')
+RAZORPAY_WEBHOOK_SECRET = config('RAZORPAY_WEBHOOK_SECRET', default='')
 

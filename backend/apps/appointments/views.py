@@ -5,6 +5,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from django.db import transaction, models
 from django.utils import timezone
 from datetime import datetime, timedelta
+import traceback
 
 from apps.authentication.models import Appointment, Patient, StaffUser, OPDQueue, Department
 from .serializers import AppointmentBookingSerializer, AppointmentSerializer, AppointmentStatusUpdateSerializer
@@ -163,6 +164,16 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         """
         appointment = self.get_object()
         
+        print("=" * 80)
+        print(f"APPROVING APPOINTMENT #{appointment.appointment_id}")
+        print("=" * 80)
+        print(f"Patient: {appointment.patient.full_name} (ID: {appointment.patient_id})")
+        print(f"Doctor ID: {appointment.doctor_id}")
+        print(f"Appointment Date: {appointment.appointment_date}")
+        print(f"Today's Date: {timezone.now().date()}")
+        print(f"Current Status: {appointment.status}")
+        print("=" * 80)
+        
         if appointment.status == 'Cancelled':
             return Response({
                 'error': 'Cannot approve a cancelled appointment'
@@ -178,16 +189,22 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                 # Update appointment status to Completed to prevent re-approval
                 appointment.status = 'Completed'
                 appointment.save()
+                print("✅ Appointment status updated to 'Completed'")
                 
                 # Check if appointment is for today
                 if appointment.appointment_date == timezone.now().date():
+                    print("📅 Appointment is for TODAY - Adding to OPD queue...")
+                    
                     # Get the doctor as StaffUser instance
                     if not appointment.doctor_id:
+                        print("❌ ERROR: No doctor assigned!")
                         return Response({
                             'error': 'No doctor assigned to this appointment'
                         }, status=status.HTTP_400_BAD_REQUEST)
                     
                     doctor = StaffUser.objects.get(staff_id=appointment.doctor_id)
+                    print(f"👨‍⚕️ Doctor: {doctor.full_name} (ID: {doctor.staff_id})")
+                    print(f"🏥 Department: {doctor.department.department_name if doctor.department else 'None'}")
                     
                     # Add to OPD Queue
                     # Get next token number for the doctor/department
@@ -198,8 +215,10 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                     ).aggregate(models.Max('token_number'))['token_number__max']
                     
                     next_token = (max_token or 0) + 1
+                    print(f"🎫 Next Token Number: {next_token}")
                     
                     # Create OPD queue entry
+                    current_time = timezone.now()
                     opd_entry = OPDQueue(
                         patient=appointment.patient,
                         doctor=doctor,
@@ -207,10 +226,25 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                         token_number=next_token,
                         status='waiting',
                         priority='normal',
-                        check_in_time=timezone.now(),
+                        check_in_time=current_time,
                         notes=f"Appointment approved: {appointment.reason_for_visit}",
+                        created_at=current_time,
+                        updated_at=current_time
                     )
                     opd_entry.save()
+                    
+                    print("=" * 80)
+                    print("✅ OPD QUEUE ENTRY CREATED SUCCESSFULLY!")
+                    print(f"   OPD ID: {opd_entry.id}")
+                    print(f"   Patient ID: {opd_entry.patient_id}")
+                    print(f"   Doctor ID: {opd_entry.doctor_id}")
+                    print(f"   Department ID: {opd_entry.department_id}")
+                    print(f"   Token: #{opd_entry.token_number}")
+                    print(f"   Status: {opd_entry.status}")
+                    print(f"   Check-in: {opd_entry.check_in_time}")
+                    print(f"   Created: {opd_entry.created_at}")
+                    print(f"   Updated: {opd_entry.updated_at}")
+                    print("=" * 80)
                     
                     return Response({
                         'message': 'Appointment approved and added to OPD queue',
@@ -218,11 +252,18 @@ class AppointmentViewSet(viewsets.ModelViewSet):
                         'opd_queue_id': opd_entry.id
                     }, status=status.HTTP_200_OK)
                 else:
+                    print(f"📅 Appointment is for {appointment.appointment_date} (NOT today)")
+                    print("   → Not adding to OPD queue yet")
                     return Response({
                         'message': 'Appointment approved. Patient will be added to queue on appointment date.'
                     }, status=status.HTTP_200_OK)
                     
         except Exception as e:
+            print("=" * 80)
+            print(f"❌ ERROR DURING APPROVAL: {str(e)}")
+            print("=" * 80)
+            import traceback
+            traceback.print_exc()
             return Response({
                 'error': str(e)
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
