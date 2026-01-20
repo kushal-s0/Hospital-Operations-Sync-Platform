@@ -138,17 +138,26 @@ export const admissionsAPI = {
 
 // Inventory API
 export const inventoryAPI = {
+  getAll: () => api.get('/inventory/items/'),
   getItems: () => api.get('/inventory/items/'),
   getLowStock: () => api.get('/inventory/items/low_stock/'),
   getExpiringSoon: () => api.get('/inventory/items/expiring_soon/'),
   getCategories: () => api.get('/inventory/categories/'),
   createTransaction: (data) => api.post('/inventory/transactions/', data),
   
+  // Stock management
+  addStock: (data) => api.post('/inventory/items/', data),
+  updateStock: (itemId, data) => api.patch(`/inventory/items/${itemId}/update_stock/`, data),
+  
   // ML Prediction Endpoints
   getPrediction: (itemId) => api.get(`/inventory/predict/${itemId}/`),
   getAllAlerts: () => api.get('/inventory/alerts/'),
   getDemandForecast: (days = 7) => api.get(`/inventory/demand-forecast/?days=${days}`),
+  getWeatherPrediction: () => api.get('/inventory/weather-prediction/'),
   getManualPrediction: (itemData) => api.post('/inventory/predict/manual/', { item_data: itemData }),
+  
+  // ML Predictions (alternative format)
+  getMLPredictions: () => api.get('/inventory/alerts/'),
 };
 
 // Dashboard API

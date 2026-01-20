@@ -411,7 +411,640 @@
   font-weight: 500;
 }
 
+/* Expiry Date Styles */
+.expiry-expired {
+  color: #dc2626;
+  font-weight: 700;
+  background-color: #fee2e2;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.expiry-soon {
+  color: #ea580c;
+  font-weight: 600;
+  background-color: #ffedd5;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.expiry-ok {
+  color: #16a34a;
+  font-weight: 500;
+}
+
 .action-buttons {
   display: flex;
   gap: 8px;
 }
+
+/* Pagination Styles */
+.pagination-controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  margin-top: 24px;
+  padding: 20px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.page-numbers {
+  display: flex;
+  gap: 8px;
+}
+
+.page-btn {
+  padding: 8px 12px;
+  border: 1px solid #e2e8f0;
+  background: white;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  color: #64748b;
+  transition: all 0.3s;
+}
+
+.page-btn:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+.page-btn.active {
+  background: #1e3c72;
+  color: white;
+  border-color: #1e3c72;
+}
+
+.page-info {
+  font-size: 0.875rem;
+  color: #64748b;
+  margin-left: 16px;
+}
+
+/* Restock Modal Styles */
+.restock-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.restock-modal {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  width: 90%;
+  max-width: 600px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.restock-modal .modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid #e2e8f0;
+}
+
+.restock-modal h3 {
+  margin: 0;
+  color: #1e293b;
+  font-size: 1.5rem;
+}
+
+.restock-modal .close-btn {
+  background: none;
+  border: none;
+  font-size: 2rem;
+  color: #64748b;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  transition: all 0.3s;
+}
+
+.restock-modal .close-btn:hover {
+  background: #f1f5f9;
+  color: #1e293b;
+}
+
+.restock-modal .form-group {
+  margin-bottom: 16px;
+}
+
+.restock-modal .form-group label {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 500;
+  color: #475569;
+}
+
+.restock-modal .form-control {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  transition: all 0.3s;
+}
+
+.restock-modal .form-control:focus {
+  outline: none;
+  border-color: #1e3c72;
+  box-shadow: 0 0 0 3px rgba(30, 60, 114, 0.1);
+}
+
+.restock-modal .form-control:read-only {
+  background: #f8fafc;
+  color: #64748b;
+  cursor: not-allowed;
+}
+
+.restock-modal .modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 2px solid #e2e8f0;
+}
+
+/* Dropdown menu for Restock button */
+.dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.dropdown-toggle {
+  padding-right: 24px !important;
+  position: relative;
+}
+
+.dropdown-toggle::after {
+  content: '▼';
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.7rem;
+}
+
+.dropdown-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 1000;
+  display: none;
+  min-width: 200px;
+  padding: 8px 0;
+  margin: 4px 0 0;
+  background-color: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  list-style: none;
+}
+
+.dropdown-menu.show {
+  display: block;
+}
+
+.dropdown-item {
+  display: block;
+  width: 100%;
+  padding: 10px 16px;
+  clear: both;
+  font-weight: 400;
+  color: #1e293b;
+  text-align: left;
+  white-space: nowrap;
+  background-color: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.dropdown-item:hover {
+  background-color: #f1f5f9;
+  color: #1e3c72;
+}
+
+/* Alert Styles */
+.alert-info {
+  background-color: #e0f2fe;
+  border-left: 4px solid #0284c7;
+  color: #075985;
+  padding: 12px 16px;
+  margin-bottom: 20px;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+/* Weather & AQI Prediction Section */
+.weather-prediction-section {
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+  padding: 28px;
+  border-radius: 16px;
+  margin-bottom: 28px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e2e8f0;
+}
+
+.weather-prediction-section h2 {
+  margin: 0 0 8px 0;
+  color: #1e293b;
+  font-size: 1.5rem;
+}
+
+.weather-prediction-section .forecast-subtitle {
+  color: #64748b;
+  margin-bottom: 20px;
+  font-size: 0.95rem;
+}
+
+/* Current Conditions */
+.current-conditions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.condition-card {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  border: 2px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  transition: all 0.3s;
+}
+
+.condition-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+}
+
+.condition-card .icon {
+  font-size: 2.5rem;
+}
+
+.condition-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.condition-info .value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.condition-info .label {
+  font-size: 0.9rem;
+  color: #64748b;
+  text-transform: capitalize;
+}
+
+.condition-info .detail {
+  font-size: 0.85rem;
+  color: #94a3b8;
+}
+
+.condition-card.aqi.good {
+  border-color: #10b981;
+  background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+}
+
+.condition-card.aqi.moderate {
+  border-color: #f59e0b;
+  background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+}
+
+.condition-card.aqi.bad {
+  border-color: #ef4444;
+  background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+}
+
+/* Risk Factors */
+.risk-factors {
+  margin-bottom: 24px;
+}
+
+.risk-factors h3 {
+  color: #1e293b;
+  margin-bottom: 16px;
+  font-size: 1.2rem;
+}
+
+.risk-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 16px;
+}
+
+.risk-card {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  border-left: 4px solid #64748b;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  transition: all 0.3s;
+}
+
+.risk-card:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  transform: translateX(4px);
+}
+
+.risk-card.high {
+  border-left-color: #ef4444;
+  background: linear-gradient(135deg, #fff 0%, #fef2f2 100%);
+}
+
+.risk-card.moderate {
+  border-left-color: #f59e0b;
+  background: linear-gradient(135deg, #fff 0%, #fffbeb 100%);
+}
+
+.risk-card.low {
+  border-left-color: #3b82f6;
+  background: linear-gradient(135deg, #fff 0%, #eff6ff 100%);
+}
+
+.risk-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.risk-trigger {
+  font-weight: 700;
+  color: #1e293b;
+  font-size: 1.05rem;
+}
+
+.severity-badge {
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.severity-badge.high {
+  background: #fecaca;
+  color: #991b1b;
+}
+
+.severity-badge.moderate {
+  background: #fed7aa;
+  color: #9a3412;
+}
+
+.severity-badge.low {
+  background: #bfdbfe;
+  color: #1e40af;
+}
+
+.risk-value {
+  font-size: 1.1rem;
+  color: #0284c7;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+.risk-diseases {
+  margin-bottom: 12px;
+}
+
+.risk-diseases strong {
+  color: #64748b;
+  font-size: 0.9rem;
+}
+
+.risk-diseases ul {
+  margin: 8px 0 0 0;
+  padding-left: 20px;
+}
+
+.risk-diseases li {
+  color: #475569;
+  font-size: 0.9rem;
+  margin: 4px 0;
+}
+
+.risk-recommendation {
+  background: #f1f5f9;
+  padding: 10px 12px;
+  border-radius: 8px;
+  color: #334155;
+  font-size: 0.9rem;
+  margin-bottom: 10px;
+}
+
+.risk-multiplier {
+  color: #64748b;
+  font-size: 0.9rem;
+}
+
+.risk-multiplier strong {
+  color: #0284c7;
+  font-weight: 700;
+}
+
+/* Weather Demand Grid */
+.weather-demand {
+  margin-bottom: 20px;
+}
+
+.weather-demand h3 {
+  color: #1e293b;
+  margin-bottom: 16px;
+  font-size: 1.2rem;
+}
+
+.weather-demand-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 14px;
+}
+
+.weather-demand-card {
+  background: white;
+  padding: 18px;
+  border-radius: 12px;
+  border: 2px solid #e2e8f0;
+  transition: all 0.3s;
+}
+
+.weather-demand-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
+
+.weather-demand-card.high {
+  border-color: #ef4444;
+  background: linear-gradient(135deg, #fff 0%, #fef2f2 100%);
+}
+
+.weather-demand-card.moderate {
+  border-color: #f59e0b;
+  background: linear-gradient(135deg, #fff 0%, #fffbeb 100%);
+}
+
+.weather-demand-card.low {
+  border-color: #10b981;
+  background: linear-gradient(135deg, #fff 0%, #ecfdf5 100%);
+}
+
+.medicine-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  margin-bottom: 12px;
+  gap: 8px;
+}
+
+.medicine-header .medicine-name {
+  font-weight: 700;
+  color: #1e293b;
+  font-size: 1.05rem;
+  flex: 1;
+}
+
+.medicine-header .urgency-badge {
+  padding: 3px 10px;
+  border-radius: 10px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.urgency-badge.high {
+  background: #fecaca;
+  color: #991b1b;
+}
+
+.urgency-badge.moderate {
+  background: #fed7aa;
+  color: #9a3412;
+}
+
+.urgency-badge.low {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.quantity-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 10px;
+  padding: 12px;
+  background: #f8fafc;
+  border-radius: 8px;
+}
+
+.quantity-label {
+  font-size: 0.85rem;
+  color: #64748b;
+}
+
+.quantity-value {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #0284c7;
+}
+
+.related-diseases {
+  margin-bottom: 10px;
+  padding: 10px;
+  background: #f1f5f9;
+  border-radius: 6px;
+}
+
+.diseases-label {
+  font-size: 0.85rem;
+  color: #64748b;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.diseases-list {
+  font-size: 0.9rem;
+  color: #475569;
+}
+
+.base-comparison {
+  font-size: 0.85rem;
+  color: #64748b;
+  padding-top: 10px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.no-risks {
+  text-align: center;
+  padding: 40px 20px;
+  background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+  border-radius: 12px;
+  border: 2px solid #10b981;
+}
+
+.no-risks p {
+  margin: 8px 0;
+  color: #065f46;
+  font-size: 1rem;
+}
+
+.no-risks p:first-child {
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+.forecast-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 16px;
+  background: #f8fafc;
+  border-radius: 8px;
+  margin-top: 20px;
+  font-size: 0.9rem;
+  color: #64748b;
+  flex-wrap: wrap;
+}
+
+.forecast-meta span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+
