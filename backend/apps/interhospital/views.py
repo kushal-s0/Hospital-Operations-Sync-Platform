@@ -4,6 +4,20 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from apps.authentication.models import Hospital, Bed, Department
 
+class HospitalListAPIView(APIView):
+    """
+    API endpoint to get list of all hospitals.
+    """
+    def get(self, request):
+        """Get all hospitals."""
+        try:
+            hospitals = Hospital.objects.all().values(
+                'hospital_id', 'hospital_name', 'region', 'facility_size_beds'
+            )
+            return Response(list(hospitals))
+        except Exception as e:
+            return Response({'error': str(e)}, status=500)
+
 
 class CityDashboardAPIView(APIView):
     """

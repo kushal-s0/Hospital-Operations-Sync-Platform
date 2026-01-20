@@ -10,13 +10,15 @@ class DepartmentViewSet(viewsets.ModelViewSet):
     
     queryset = Department.objects.all()
     serializer_class = DepartmentSerializer
-
+    pagination_class = None  # Disable pagination to show all departments
 
 class BedViewSet(viewsets.ModelViewSet):
     """ViewSet for Bed CRUD operations."""
     
     queryset = Bed.objects.all()
     serializer_class = BedSerializer
+    pagination_class = None  # Disable pagination to show all beds
+
     
     @action(detail=False, methods=['get'])
     def available(self, request):

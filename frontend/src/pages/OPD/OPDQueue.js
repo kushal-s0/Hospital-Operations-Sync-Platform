@@ -20,6 +20,7 @@ const OPDQueue = () => {
   // Get current user from localStorage
   const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
   const isNurse = currentUser.role === 'Nurse';
+  const isDoctor = currentUser.role === 'Doctor';
   
   // Form state for adding patient
   const [patientForm, setPatientForm] = useState({
@@ -49,9 +50,13 @@ const OPDQueue = () => {
       console.log('Is Array?', Array.isArray(response.data));
       
       // Handle both array and paginated response formats
-      const queueData = Array.isArray(response.data) 
+      let queueData = Array.isArray(response.data) 
         ? response.data 
         : (response.data.results || []);
+        // If user is a doctor, filter to show only their patients
+      if (isDoctor && currentUser.staff_id) {
+        queueData = queueData.filter(patient => patient.doctor === currentUser.staff_id);
+      }
       
       console.log('Parsed queue data:', queueData);
       console.log('Queue data length:', queueData.length);

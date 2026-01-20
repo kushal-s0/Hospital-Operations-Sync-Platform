@@ -120,7 +120,11 @@ export const bedsAPI = {
   getAvailable: () => api.get('/beds/available/'),
   getOccupancySummary: () => api.get('/beds/occupancy_summary/'),
   getDepartments: () => api.get('/beds/departments/'),
+  getHospitals: () => api.get('/interhospital/hospitals/'),
+  create: (data) => api.post('/beds/', data),
   update: (id, data) => api.put(`/beds/${id}/`, data),
+  patch: (id, data) => api.patch(`/beds/${id}/`, data),
+  delete: (id) => api.delete(`/beds/${id}/`),
 };
 
 // Admissions API

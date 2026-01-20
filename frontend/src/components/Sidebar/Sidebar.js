@@ -8,22 +8,28 @@ const Sidebar = () => {
 
   useEffect(() => {
     // Get user role from localStorage
-    const user = JSON.parse(localStorage.getItem('user'));
-    if (user && user.role) {
-      setUserRole(user.role);
+    const userData = localStorage.getItem('user');
+    if (userData) {
+      const user = JSON.parse(userData);
+      if (user && user.role) {
+        setUserRole(user.role);
+      }
     }
   }, []);
 
   const isReceptionist = userRole === 'Receptionist';
+  const isAdmin = userRole === 'Admin';
 
   const baseMenuItems = [
-    { path: '/dashboard', label: 'Dashboard', icon: '📊' },
-    { path: '/opd', label: 'OPD Queue', icon: '🎫' },
-    { path: '/beds', label: 'Bed Management', icon: '🛏️' },
-    { path: '/admissions', label: 'Admissions', icon: '📋' },
-    { path: '/inventory', label: 'Inventory', icon: '💊' },
-    { path: '/inter-hospital', label: 'Inter-Hospital', icon: '🏥' },
+    { path: '/dashboard', label: 'Dashboard', icon: '📊', roles: ['Admin', 'Doctor', 'Nurse', 'Pharmacist', 'Receptionist'] },
+    { path: '/opd', label: 'OPD Queue', icon: '🎫', roles: ['Admin', 'Doctor', 'Nurse', 'Receptionist'] },
+    { path: '/beds', label: 'Bed Management', icon: '🛏️', roles: ['Admin', 'Nurse', 'Receptionist'] },
+    { path: '/admissions', label: 'Admissions', icon: '📋', roles: ['Admin', 'Nurse', 'Receptionist'] },
+    { path: '/inventory', label: 'Inventory', icon: '💊', roles: ['Admin', 'Pharmacist', 'Receptionist'] },
+    { path: '/inter-hospital', label: 'Inter-Hospital', icon: '🏥', roles: ['Admin'] },
+    { path: '/receptionist', label: 'Receptionist Portal', icon: '👨‍💼', roles: ['Admin'] },
   ];
+  
   const receptionistMenuItems = [
     { path: '/receptionist-dashboard', label: 'Dashboard', icon: '📊', receptionist: true },
     { path: '/receptionist-billing', label: 'Billing', icon: '💳', receptionist: true },
@@ -31,7 +37,9 @@ const Sidebar = () => {
     { path: '/receptionist-treatments', label: 'Treatments', icon: '🏥', receptionist: true },
   ];
 
-  const menuItems = isReceptionist ? receptionistMenuItems : baseMenuItems;
+  const menuItems = isReceptionist ? receptionistMenuItems : (userRole
+    ? baseMenuItems.filter(item => item.roles.includes(userRole))
+    : []);
   return (
     <aside className="sidebar">
       {isReceptionist && <div className="sidebar-title">Receptionist Menu</div>}
