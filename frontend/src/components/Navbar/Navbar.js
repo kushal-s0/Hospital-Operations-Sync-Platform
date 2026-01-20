@@ -28,7 +28,7 @@ const Navbar = () => {
         <span className="navbar-time">{new Date().toLocaleString()}</span>
         <button className="navbar-btn">🔔</button>
         <span className="navbar-user">
-          👤 {user ? `${user.first_name || user.username}` : 'User'}
+          👤 {user ? `${user.first_name || user.username} (${user.role || 'User'})` : 'User'}
         </span>
         <button className="navbar-btn logout-btn" onClick={handleLogout}>
           🚪 Logout

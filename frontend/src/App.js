@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/Layout/Layout';
 import PrivateRoute from './components/PrivateRoute/PrivateRoute';
+import RoleBasedRoute from './components/RoleBasedRoute/RoleBasedRoute';
 import Landing from './pages/Landing/Landing';
 import Login from './pages/Login/Login';
 import Dashboard from './pages/Dashboard/Dashboard';
@@ -10,6 +11,7 @@ import BedManagement from './pages/Beds/BedManagement';
 import Admissions from './pages/Admissions/Admissions';
 import Inventory from './pages/Inventory/Inventory';
 import InterHospital from './pages/InterHospital/InterHospital';
+import ReceptionistDashboard from './pages/Receptionist/ReceptionistDashboard';
 import ReceptionistDashboardTab from './pages/Receptionist/ReceptionistDashboardTab';
 import ReceptionistBillingTab from './pages/Receptionist/ReceptionistBillingTab';
 import ReceptionistTransactionsTab from './pages/Receptionist/ReceptionistTransactionsTab';
@@ -42,45 +44,51 @@ function App() {
         } />
         
         <Route path="/opd" element={
-          <PrivateRoute>
+          <RoleBasedRoute allowedRoles={['Admin', 'Doctor', 'Nurse', 'Receptionist']}>
             <Layout>
               <OPDQueue />
             </Layout>
-          </PrivateRoute>
+          </RoleBasedRoute>
         } />
         
         <Route path="/beds" element={
-          <PrivateRoute>
+          <RoleBasedRoute allowedRoles={['Admin', 'Nurse', 'Receptionist']}>
             <Layout>
               <BedManagement />
             </Layout>
-          </PrivateRoute>
+          </RoleBasedRoute>
         } />
         
         <Route path="/admissions" element={
-          <PrivateRoute>
+          <RoleBasedRoute allowedRoles={['Admin', 'Nurse', 'Receptionist']}>
             <Layout>
               <Admissions />
             </Layout>
-          </PrivateRoute>
+          </RoleBasedRoute>
         } />
         
         <Route path="/inventory" element={
-          <PrivateRoute>
+          <RoleBasedRoute allowedRoles={['Admin', 'Pharmacist', 'Receptionist']}>
             <Layout>
               <Inventory />
             </Layout>
-          </PrivateRoute>
+          </RoleBasedRoute>
         } />
         
         <Route path="/inter-hospital" element={
-          <PrivateRoute>
+          <RoleBasedRoute allowedRoles={['Admin']}>
             <Layout>
               <InterHospital />
             </Layout>
-          </PrivateRoute>
+          </RoleBasedRoute>
         } />
 
+        {/* Receptionist Portal - Full dashboard with internal navigation (Admin & Receptionist access) */}
+        <Route path="/receptionist" element={
+          <RoleBasedRoute allowedRoles={['Admin', 'Receptionist']}>
+            <ReceptionistDashboard />
+          </RoleBasedRoute>
+        } />
 
         {/* Receptionist Routes - Separate page views */}
         <Route path="/receptionist-dashboard" element={
