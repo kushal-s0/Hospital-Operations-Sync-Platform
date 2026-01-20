@@ -386,6 +386,8 @@ class InventoryItem(models.Model):
     quantity_available = models.IntegerField(null=True)
     reorder_level = models.IntegerField(null=True)
     supplier = models.CharField(max_length=150, null=True)
+    unit_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    expiry_date = models.DateField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     admin_id = models.IntegerField(null=True)

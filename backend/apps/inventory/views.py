@@ -149,11 +149,68 @@ class InventoryItemViewSet(viewsets.ModelViewSet):
     queryset = InventoryItem.objects.all()
     serializer_class = InventoryItemSerializer
     
+    def list(self, request, *args, **kwargs):
+        """Get all inventory items with pagination and sorting by expiry date."""
+        queryset = self.get_queryset()
+        
+        # Sort by expiry date if available (items without expiry go last)
+        # Since expiry_date doesn't exist in current schema, we'll order by item_name for now
+        queryset = queryset.order_by('item_name')
+        
+        # Apply pagination
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+    
+    @action(detail=False, methods=['post'])
+    def add_stock(self, request):
+        """Add new inventory item."""
+        try:
+            serializer = self.get_serializer(data=request.data)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+            
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response(
+                {'error': str(e), 'details': 'Failed to add inventory item'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+    
+    @action(detail=True, methods=['patch'])
+    def update_stock(self, request, pk=None):
+        """Update stock quantity for existing item."""
+        try:
+            item = self.get_object()
+            stock_to_add = int(request.data.get('stock_quantity', 0))
+            
+            if stock_to_add > 0:
+                item.quantity_available = (item.quantity_available or 0) + stock_to_add
+                item.save()
+                
+                serializer = self.get_serializer(item)
+                return Response(serializer.data)
+            else:
+                return Response(
+                    {'error': 'stock_quantity must be positive'}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        except ValueError:
+            return Response(
+                {'error': 'Invalid stock_quantity'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+    
     @action(detail=False, methods=['get'])
     def low_stock(self, request):
         """Get items with low stock."""
         low_stock_items = InventoryItem.objects.filter(
-            current_stock__lte=models.F('minimum_stock')
+            quantity_available__lte=models.F('reorder_level')
         )
         serializer = self.get_serializer(low_stock_items, many=True)
         return Response(serializer.data)
