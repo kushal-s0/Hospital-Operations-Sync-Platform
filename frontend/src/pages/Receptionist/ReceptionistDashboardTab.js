@@ -70,7 +70,7 @@ const ReceptionistDashboardTab = () => {
       {/* Visualization Type Selector */}
       <div className="viz-selector">
         <button 
-          className={`viz-btn ${vizType === 'cards' ? 'active' : ''}`}
+          className={`button viz-btn ${vizType === 'cards' ? 'active' : ''}`}
           onClick={() => setVizType('cards')}
           title="Simple stat cards"
         >
