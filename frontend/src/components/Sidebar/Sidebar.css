@@ -1,64 +1,147 @@
+/* ============================================
+   SIDEBAR - Professional Hospital UI
+   ============================================ */
+
 .sidebar {
   position: fixed;
   left: 0;
-  top: 60px;
-  width: 250px;
-  height: calc(100vh - 60px);
-  background: white;
-  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.05);
-  z-index: 999;
+  top: var(--header-height);
+  width: var(--sidebar-width);
+  height: calc(100vh - var(--header-height));
+  background: var(--color-neutral-0);
+  border-right: 1px solid var(--color-neutral-200);
+  z-index: var(--z-sticky);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+/* === Sidebar Header === */
+.sidebar-header {
+  padding: var(--spacing-4) var(--spacing-5);
+  border-bottom: 1px solid var(--color-neutral-200);
+  background: var(--color-neutral-50);
 }
 
 .sidebar-title {
-  padding: 12px 24px;
-  font-size: 0.85rem;
-  font-weight: 700;
-  color: #667eea;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-primary-700);
   text-transform: uppercase;
-  letter-spacing: 1px;
-  border-bottom: 2px solid #667eea;
-  margin-bottom: 8px;
+  letter-spacing: 0.8px;
 }
 
+/* === Sidebar Navigation === */
 .sidebar-nav {
   display: flex;
   flex-direction: column;
-  padding: 16px 0;
+  padding: var(--spacing-3) 0;
+  flex: 1;
 }
 
+/* === Sidebar Links === */
 .sidebar-link {
   display: flex;
   align-items: center;
-  padding: 14px 24px;
-  color: #64748b;
+  gap: var(--spacing-3);
+  padding: var(--spacing-3) var(--spacing-5);
+  color: var(--color-neutral-700);
   text-decoration: none;
-  transition: all 0.3s;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  transition: all var(--transition-fast);
+  position: relative;
   border-left: 3px solid transparent;
 }
 
+.sidebar-link::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: transparent;
+  transition: background var(--transition-fast);
+}
+
 .sidebar-link:hover {
-  background: #f1f5f9;
-  color: #1e3c72;
+  background: var(--color-neutral-50);
+  color: var(--color-neutral-900);
+}
+
+.sidebar-link:hover .sidebar-icon {
+  color: var(--color-primary-600);
 }
 
 .sidebar-link.active {
-  background: #e8f0fe;
-  color: #1e3c72;
-  border-left-color: #1e3c72;
-  font-weight: 600;
+  background: linear-gradient(90deg, var(--color-primary-50) 0%, transparent 100%);
+  color: var(--color-primary-700);
+  font-weight: var(--font-weight-semibold);
 }
 
+.sidebar-link.active::before {
+  background: var(--color-primary-600);
+}
+
+.sidebar-link.active .sidebar-icon {
+  color: var(--color-primary-600);
+}
+
+/* === Sidebar Icon === */
 .sidebar-icon {
-  font-size: 1.2rem;
-  margin-right: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  color: var(--color-neutral-600);
+  transition: color var(--transition-fast);
+  flex-shrink: 0;
 }
 
+/* === Sidebar Label === */
 .sidebar-label {
-  font-size: 0.95rem;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
+/* === Scrollbar Styling === */
+.sidebar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sidebar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sidebar::-webkit-scrollbar-thumb {
+  background: var(--color-neutral-300);
+  border-radius: var(--radius-full);
+}
+
+.sidebar::-webkit-scrollbar-thumb:hover {
+  background: var(--color-neutral-400);
+}
+
+/* === Responsive === */
 @media (max-width: 768px) {
   .sidebar {
-    display: none;
+    transform: translateX(-100%);
+    transition: transform var(--transition-base);
+  }
+
+  .sidebar.sidebar-open {
+    transform: translateX(0);
+    box-shadow: var(--shadow-xl);
+  }
+}
+
+/* === Mobile Menu Toggle (for future implementation) === */
+@media (max-width: 768px) {
+  .sidebar {
+    display: none; /* Hide on mobile for now, can implement hamburger menu later */
   }
 }

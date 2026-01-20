@@ -1,43 +1,146 @@
+/* ============================================
+   TABLE - Professional Hospital UI
+   ============================================ */
+
 .table-container {
-  background: white;
-  border-radius: 12px;
+  background: var(--color-neutral-0);
+  border: 1px solid var(--color-neutral-200);
+  border-radius: var(--radius-lg);
   overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  box-shadow: var(--shadow-sm);
+}
+
+.table-wrapper {
+  overflow-x: auto;
+  max-height: 600px;
+  overflow-y: auto;
 }
 
 .table {
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: var(--font-size-sm);
+}
+
+/* === Table Header === */
+.table thead {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--color-neutral-50);
 }
 
 .table th {
-  background: #f8fafc;
-  padding: 14px 16px;
+  padding: var(--spacing-4) var(--spacing-4);
   text-align: left;
-  font-weight: 600;
-  color: #475569;
-  font-size: 0.85rem;
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-neutral-700);
+  font-size: var(--font-size-xs);
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--color-neutral-200);
+  background: var(--color-neutral-50);
+  white-space: nowrap;
 }
 
-.table td {
-  padding: 14px 16px;
-  border-bottom: 1px solid #f1f5f9;
-  color: #334155;
+/* === Table Body === */
+.table tbody tr {
+  transition: background var(--transition-fast);
 }
 
 .table tbody tr:hover {
-  background: #f8fafc;
+  background: var(--color-neutral-50);
 }
 
 .table tbody tr.clickable {
   cursor: pointer;
 }
 
+.table tbody tr.clickable:hover {
+  background: var(--color-primary-50);
+}
+
+.table tbody tr.clickable:active {
+  background: var(--color-primary-100);
+}
+
+.table td {
+  padding: var(--spacing-4) var(--spacing-4);
+  border-bottom: 1px solid var(--color-neutral-100);
+  color: var(--color-neutral-900);
+  vertical-align: middle;
+}
+
+.table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* === Table Empty State === */
 .table-empty {
   text-align: center;
-  color: #94a3b8;
-  padding: 40px !important;
+  color: var(--color-neutral-500);
+  padding: var(--spacing-12) var(--spacing-6) !important;
+  font-size: var(--font-size-base);
+}
+
+/* === Table Cell Utilities === */
+.table-cell-center {
+  text-align: center;
+}
+
+.table-cell-right {
+  text-align: right;
+}
+
+.table-cell-nowrap {
+  white-space: nowrap;
+}
+
+.table-cell-truncate {
+  max-width: 200px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* === Table Row States === */
+.table-row-selected {
+  background: var(--color-primary-50) !important;
+}
+
+.table-row-disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+/* === Scrollbar Styling === */
+.table-wrapper::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.table-wrapper::-webkit-scrollbar-track {
+  background: var(--color-neutral-100);
+}
+
+.table-wrapper::-webkit-scrollbar-thumb {
+  background: var(--color-neutral-400);
+  border-radius: var(--radius-full);
+}
+
+.table-wrapper::-webkit-scrollbar-thumb:hover {
+  background: var(--color-neutral-500);
+}
+
+/* === Responsive === */
+@media (max-width: 768px) {
+  .table th,
+  .table td {
+    padding: var(--spacing-3);
+  }
+
+  .table th {
+    font-size: 10px;
+  }
 }

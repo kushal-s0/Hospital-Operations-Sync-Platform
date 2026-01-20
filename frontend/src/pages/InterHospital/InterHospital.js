@@ -126,12 +126,6 @@ const InterHospital = () => {
             </div>
           </div>
 
-          <div className="api-info-card">
-            <h3>📡 API Endpoint for City Dashboard</h3>
-            <p>Share your hospital's anonymized capacity data with the central city health dashboard</p>
-            <code>GET /api/interhospital/city-dashboard/</code>
-          </div>
-
           <h2>City-Wide Hospital Capacity</h2>
           {cityData.length === 0 ? (
             <p className="no-data">No hospital data available</p>
