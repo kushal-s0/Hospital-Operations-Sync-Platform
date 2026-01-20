@@ -1,6 +1,6 @@
 from rest_framework import viewsets, status
 from rest_framework.decorators import action, api_view, permission_classes
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from django.utils import timezone
 from django.db.models import Avg, Count, Q
@@ -265,18 +265,33 @@ class OPDQueueViewSet(viewsets.ModelViewSet):
     
     queryset = OPDQueue.objects.all()
     serializer_class = OPDQueueSerializer
+    permission_classes = [IsAuthenticated]  # Require authentication
+    
+    def get_queryset(self):
+        """Filter queryset based on user role - doctors see only their patients."""
+        queryset = OPDQueue.objects.all()
+        
+        # Check if user is authenticated
+        if self.request.user and self.request.user.is_authenticated:
+            # If user is a doctor, filter to show only patients assigned to them
+            if self.request.user.role == 'Doctor':
+                queryset = queryset.filter(doctor_id=self.request.user.staff_id)
+        
+        return queryset
     
     def list(self, request, *args, **kwargs):
-        """Override list to add ML-predicted wait times for each patient."""
+        """Override list to add ML-predicted wait times for each patient (except for doctors)."""
         queryset = self.filter_queryset(self.get_queryset())
         
-        # Calculate estimated wait time for each waiting patient
-        for queue_entry in queryset:
-            if queue_entry.status == 'waiting':
-                estimated_wait = calculate_patient_wait_time(queue_entry)
-                queue_entry.estimated_wait_time = estimated_wait
-                # Update in database
-                OPDQueue.objects.filter(id=queue_entry.id).update(estimated_wait_time=estimated_wait)
+        # Skip wait time calculation for doctors
+        if not (request.user and request.user.is_authenticated and request.user.role == 'Doctor'):
+            # Calculate estimated wait time for each waiting patient (non-doctors only)
+            for queue_entry in queryset:
+                if queue_entry.status == 'waiting':
+                    estimated_wait = calculate_patient_wait_time(queue_entry)
+                    queue_entry.estimated_wait_time = estimated_wait
+                    # Update in database
+                    OPDQueue.objects.filter(id=queue_entry.id).update(estimated_wait_time=estimated_wait)
         
         page = self.paginate_queryset(queryset)
         if page is not None:
@@ -330,40 +345,49 @@ class OPDQueueViewSet(viewsets.ModelViewSet):
     
     @action(detail=False, methods=['get'])
     def current_queue(self, request):
-        """Get current active queue."""
+        """Get current active queue (filtered by doctor if logged-in user is a doctor)."""
         today = timezone.now().date()
         queue = OPDQueue.objects.filter(
             created_at__date=today,
             status__in=['waiting', 'in_consultation']
-        ).order_by('priority', 'check_in_time')
+        )
+        
+        # Filter by doctor if user is a doctor
+        if request.user and request.user.is_authenticated:
+            if request.user.role == 'Doctor':
+                queue = queue.filter(doctor_id=request.user.staff_id)
+        
+        queue = queue.order_by('priority', 'check_in_time')
         serializer = self.get_serializer(queue, many=True)
         return Response(serializer.data)
     
     @action(detail=True, methods=['post'])
     def start_consultation(self, request, pk=None):
-        """Mark patient consultation as started and recalculate wait times."""
+        """Mark patient consultation as started (no wait time recalculation for doctors)."""
         queue_entry = self.get_object()
         queue_entry.status = 'in_consultation'
         queue_entry.consultation_start_time = timezone.now()
         queue_entry.estimated_wait_time = None  # Clear wait time when consultation starts
         queue_entry.save()
         
-        # Recalculate wait times for other waiting patients with same doctor
-        if queue_entry.doctor:
-            waiting_patients = OPDQueue.objects.filter(
-                doctor=queue_entry.doctor,
-                status='waiting'
-            )
-            for patient in waiting_patients:
-                estimated_wait = calculate_patient_wait_time(patient)
-                patient.estimated_wait_time = estimated_wait
-                patient.save(update_fields=['estimated_wait_time'])
+        # Skip wait time recalculation for doctors
+        # (Only recalculate for non-doctor roles)
+        if not (request.user and request.user.is_authenticated and request.user.role == 'Doctor'):
+            if queue_entry.doctor:
+                waiting_patients = OPDQueue.objects.filter(
+                    doctor=queue_entry.doctor,
+                    status='waiting'
+                )
+                for patient in waiting_patients:
+                    estimated_wait = calculate_patient_wait_time(patient)
+                    patient.estimated_wait_time = estimated_wait
+                    patient.save(update_fields=['estimated_wait_time'])
         
         return Response({'status': 'consultation started'})
     
     @action(detail=True, methods=['post'])
     def end_consultation(self, request, pk=None):
-        """Mark patient consultation as completed and recalculate wait times."""
+        """Mark patient consultation as completed (no wait time recalculation for doctors)."""
         queue_entry = self.get_object()
         doctor = queue_entry.doctor
         queue_entry.status = 'completed'
@@ -371,18 +395,64 @@ class OPDQueueViewSet(viewsets.ModelViewSet):
         queue_entry.estimated_wait_time = None  # Clear wait time when completed
         queue_entry.save()
         
-        # Recalculate wait times for waiting patients with same doctor (doctor now free)
-        if doctor:
-            waiting_patients = OPDQueue.objects.filter(
-                doctor=doctor,
-                status='waiting'
-            )
-            for patient in waiting_patients:
-                estimated_wait = calculate_patient_wait_time(patient)
-                patient.estimated_wait_time = estimated_wait
-                patient.save(update_fields=['estimated_wait_time'])
+        # Skip wait time recalculation for doctors
+        # (Only recalculate for non-doctor roles)
+        if not (request.user and request.user.is_authenticated and request.user.role == 'Doctor'):
+            if doctor:
+                waiting_patients = OPDQueue.objects.filter(
+                    doctor=doctor,
+                    status='waiting'
+                )
+                for patient in waiting_patients:
+                    estimated_wait = calculate_patient_wait_time(patient)
+                    patient.estimated_wait_time = estimated_wait
+                    patient.save(update_fields=['estimated_wait_time'])
         
         return Response({'status': 'consultation completed'})
+    
+    @action(detail=False, methods=['get'])
+    def my_queue(self, request):
+        """Get the logged-in doctor's complete queue with statistics."""
+        if not request.user or not request.user.is_authenticated:
+            return Response(
+                {'error': 'Authentication required'},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+        
+        if request.user.role != 'Doctor':
+            return Response(
+                {'error': 'This endpoint is only available for doctors'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Get doctor's queue
+        doctor_queue = OPDQueue.objects.filter(doctor_id=request.user.staff_id)
+        
+        # Calculate statistics
+        waiting_count = doctor_queue.filter(status='waiting').count()
+        in_consultation_count = doctor_queue.filter(status='in_consultation').count()
+        completed_today = doctor_queue.filter(
+            status='completed',
+            created_at__date=timezone.now().date()
+        ).count()
+        
+        # Get current active queue
+        active_queue = doctor_queue.filter(
+            status__in=['waiting', 'in_consultation']
+        ).order_by('priority', 'check_in_time')
+        
+        serializer = self.get_serializer(active_queue, many=True)
+        
+        return Response({
+            'doctor_name': request.user.full_name,
+            'statistics': {
+                'waiting': waiting_count,
+                'in_consultation': in_consultation_count,
+                'completed_today': completed_today,
+                'total_active': waiting_count + in_consultation_count
+            },
+            'queue': serializer.data
+        })
 
 
 class OPDStatisticsViewSet(viewsets.ReadOnlyModelViewSet):
