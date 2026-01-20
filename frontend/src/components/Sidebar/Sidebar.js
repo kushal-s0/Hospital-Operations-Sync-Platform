@@ -91,6 +91,20 @@ const TreatmentsIcon = () => (
   </svg>
 );
 
+const AppointmentsIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+    <rect x="3.75" y="3.75" width="12.5" height="13.75" rx="1.5" stroke="currentColor" strokeWidth="1.5"/>
+    <path d="M6.875 2.5V5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+    <path d="M13.125 2.5V5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+    <path d="M3.75 7.5H16.25" stroke="currentColor" strokeWidth="1.5"/>
+    <circle cx="7.5" cy="10.625" r="0.625" fill="currentColor"/>
+    <circle cx="10" cy="10.625" r="0.625" fill="currentColor"/>
+    <circle cx="12.5" cy="10.625" r="0.625" fill="currentColor"/>
+    <circle cx="7.5" cy="13.75" r="0.625" fill="currentColor"/>
+    <circle cx="10" cy="13.75" r="0.625" fill="currentColor"/>
+  </svg>
+);
+
 const iconMap = {
   dashboard: <DashboardIcon />,
   opd: <OPDIcon />,
@@ -101,7 +115,8 @@ const iconMap = {
   receptionist: <ReceptionistIcon />,
   billing: <BillingIcon />,
   transactions: <TransactionsIcon />,
-  treatments: <TreatmentsIcon />
+  treatments: <TreatmentsIcon />,
+  appointments: <AppointmentsIcon />
 };
 
 const Sidebar = () => {
@@ -129,6 +144,7 @@ const Sidebar = () => {
   const baseMenuItems = [
     { path: '/dashboard', label: 'Dashboard', icon: 'dashboard', roles: ['Admin', 'Doctor', 'Nurse', 'Pharmacist', 'Receptionist'] },
     { path: '/opd', label: 'OPD Queue', icon: 'opd', roles: ['Admin', 'Doctor', 'Nurse', 'Receptionist'] },
+    { path: '/appointments', label: 'Appointments', icon: 'appointments', roles: ['Admin', 'Nurse', 'Receptionist'] },
     { path: '/beds', label: 'Bed Management', icon: 'beds', roles: ['Admin', 'Nurse', 'Receptionist'] },
     { path: '/admissions', label: 'Admissions', icon: 'admissions', roles: ['Admin', 'Nurse', 'Receptionist'] },
     { path: '/inventory', label: 'Inventory', icon: 'inventory', roles: ['Admin', 'Pharmacist', 'Receptionist'] },

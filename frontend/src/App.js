@@ -11,6 +11,7 @@ import BedManagement from './pages/Beds/BedManagement';
 import Admissions from './pages/Admissions/Admissions';
 import Inventory from './pages/Inventory/Inventory';
 import InterHospital from './pages/InterHospital/InterHospital';
+import AppointmentsManagement from './pages/Appointments/AppointmentsManagement';
 import ReceptionistDashboard from './pages/Receptionist/ReceptionistDashboard';
 import ReceptionistDashboardTab from './pages/Receptionist/ReceptionistDashboardTab';
 import ReceptionistBillingTab from './pages/Receptionist/ReceptionistBillingTab';
@@ -79,6 +80,15 @@ function App() {
           <RoleBasedRoute allowedRoles={['Admin']}>
             <Layout>
               <InterHospital />
+            </Layout>
+          </RoleBasedRoute>
+        } />
+
+        {/* Appointments Management */}
+        <Route path="/appointments" element={
+          <RoleBasedRoute allowedRoles={['Admin', 'Nurse', 'Receptionist']}>
+            <Layout>
+              <AppointmentsManagement />
             </Layout>
           </RoleBasedRoute>
         } />
