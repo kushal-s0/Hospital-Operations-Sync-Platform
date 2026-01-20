@@ -7,6 +7,7 @@ from django.db.models import Avg, Count, Q
 from .models import OPDQueue, OPDStatistics
 from .serializers import OPDQueueSerializer, OPDStatisticsSerializer
 from apps.authentication.models import StaffUser
+from apps.utils import get_ist_now, get_ist_today, get_ist_date_range
 import joblib
 import numpy as np
 import os
@@ -32,8 +33,9 @@ def calculate_patient_wait_time(patient_queue_entry):
     """
     try:
         # Get current time and stats
-        current_hour = timezone.now().hour
-        is_weekend = timezone.now().weekday() >= 5
+        current_time_ist = get_ist_now()
+        current_hour = current_time_ist.hour
+        is_weekend = current_time_ist.weekday() >= 5
         
         # Get patient's doctor
         patient_doctor = patient_queue_entry.doctor
@@ -268,14 +270,30 @@ class OPDQueueViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]  # Require authentication
     
     def get_queryset(self):
-        """Filter queryset based on user role - doctors see only their patients."""
-        queryset = OPDQueue.objects.all()
+        """Filter queryset based on user role and date - doctors see only their patients."""
+        # Get today's date range in IST timezone
+        # Using datetime range instead of __date lookup to avoid UTC conversion issues
+        start_of_day, end_of_day = get_ist_date_range()
+        
+        # Filter to show only today's queue entries using datetime range
+        queryset = OPDQueue.objects.filter(
+            check_in_time__gte=start_of_day,
+            check_in_time__lte=end_of_day
+        )
+        
+        print(f"=" * 80)
+        print(f"OPD Queue Filtering - IST Date Range")
+        print(f"Start of day (IST): {start_of_day}")
+        print(f"End of day (IST):   {end_of_day}")
+        print(f"Total queue entries for today: {queryset.count()}")
+        print(f"=" * 80)
         
         # Check if user is authenticated
         if self.request.user and self.request.user.is_authenticated:
             # If user is a doctor, filter to show only patients assigned to them
             if self.request.user.role == 'Doctor':
                 queryset = queryset.filter(doctor_id=self.request.user.staff_id)
+                print(f"Doctor filter applied - Showing only doctor's patients: {queryset.count()}")
         
         return queryset
     
@@ -366,7 +384,7 @@ class OPDQueueViewSet(viewsets.ModelViewSet):
         """Mark patient consultation as started (no wait time recalculation for doctors)."""
         queue_entry = self.get_object()
         queue_entry.status = 'in_consultation'
-        queue_entry.consultation_start_time = timezone.now()
+        queue_entry.consultation_start_time = get_ist_now()
         queue_entry.estimated_wait_time = None  # Clear wait time when consultation starts
         queue_entry.save()
         
@@ -433,7 +451,7 @@ class OPDQueueViewSet(viewsets.ModelViewSet):
         in_consultation_count = doctor_queue.filter(status='in_consultation').count()
         completed_today = doctor_queue.filter(
             status='completed',
-            created_at__date=timezone.now().date()
+            created_at__date=get_ist_today()
         ).count()
         
         # Get current active queue
