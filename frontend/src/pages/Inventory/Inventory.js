@@ -10,20 +10,89 @@ const Inventory = () => {
   const [selectedItem, setSelectedItem] = useState(null);
   const [itemPrediction, setItemPrediction] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10);
+  const [showRestockModal, setShowRestockModal] = useState(false);
+  const [restockMode, setRestockMode] = useState(null); // 'update' or 'add'
+  const [restockItem, setRestockItem] = useState(null);
+  const [inventoryItems, setInventoryItems] = useState([]);
+  const [openDropdownId, setOpenDropdownId] = useState(null); // Track which dropdown is open
+  const [restockForm, setRestockForm] = useState({
+    sku: '',
+    name: '',
+    category: '',
+    supplier: '',
+    unit_price: '',
+    expiry_date: '',
+    stock_quantity: '',
+    reorder_level: ''
+  });
   
-  const inventoryItems = [
-    { id: 1, name: 'Paracetamol 500mg', sku: 'MED-001', category: 'Medicine', item_type: 'medicine', current_stock: 500, minimum_stock: 100, unit: 'tablets', unit_price: 2.50, expiry_date: '2027-06-15', is_low_stock: false },
-    { id: 2, name: 'Surgical Gloves (L)', sku: 'SUP-001', category: 'Consumable', item_type: 'consumable', current_stock: 50, minimum_stock: 100, unit: 'boxes', unit_price: 15.00, expiry_date: '2026-12-01', is_low_stock: true },
-    { id: 3, name: 'IV Cannula 20G', sku: 'SUP-002', category: 'Consumable', item_type: 'consumable', current_stock: 200, minimum_stock: 150, unit: 'pieces', unit_price: 5.00, expiry_date: '2027-03-20', is_low_stock: false },
-    { id: 4, name: 'Amoxicillin 250mg', sku: 'MED-002', category: 'Medicine', item_type: 'medicine', current_stock: 30, minimum_stock: 50, unit: 'capsules', unit_price: 8.00, expiry_date: '2026-02-10', is_low_stock: true },
-    { id: 5, name: 'Oxygen Mask', sku: 'EQP-001', category: 'Equipment', item_type: 'equipment', current_stock: 75, minimum_stock: 30, unit: 'pieces', unit_price: 25.00, expiry_date: null, is_low_stock: false },
-    { id: 6, name: 'Surgical Sutures', sku: 'SUR-001', category: 'Surgical', item_type: 'surgical', current_stock: 15, minimum_stock: 25, unit: 'packs', unit_price: 45.00, expiry_date: '2026-08-15', is_low_stock: true },
-  ];
-
-  // Fetch ML predictions on mount
+  // Fetch ML predictions and inventory on mount
   useEffect(() => {
     fetchMLPredictions();
+    fetchInventory();
   }, []);
+
+  const fetchInventory = async () => {
+    try {
+      setLoading(true);
+      const response = await inventoryAPI.getAll();
+      console.log('Inventory response:', response);
+      console.log('Response data type:', typeof response.data);
+      console.log('Is array?', Array.isArray(response.data));
+      
+      // Handle both paginated response and direct array
+      let items = [];
+      if (response.data) {
+        if (Array.isArray(response.data)) {
+          items = response.data;
+        } else if (response.data.results && Array.isArray(response.data.results)) {
+          // Paginated response
+          items = response.data.results;
+        } else if (typeof response.data === 'object') {
+          // Try to extract array from object
+          const keys = Object.keys(response.data);
+          console.log('Response data keys:', keys);
+          items = response.data.results || response.data.data || [];
+        }
+      }
+      
+      console.log('Items to map:', items);
+      
+      // Map database fields to frontend format
+      const mappedItems = items.map(item => ({
+        id: item.item_id,
+        name: item.item_name,
+        sku: `ITM-${String(item.item_id).padStart(3, '0')}`,
+        category: item.category || 'Other',
+        item_type: (item.category || '').toLowerCase(),
+        current_stock: item.quantity_available || 0,
+        minimum_stock: item.reorder_level || 0,
+        unit: 'units', // Default unit
+        unit_price: item.unit_price || 0,
+        expiry_date: item.expiry_date || null,
+        is_low_stock: item.quantity_available <= item.reorder_level,
+        supplier: item.supplier || 'N/A'
+      }));
+      
+      console.log('Mapped items:', mappedItems);
+      setInventoryItems(mappedItems);
+    } catch (error) {
+      console.error('Error fetching inventory:', error);
+      console.error('Error details:', error.response?.data);
+      alert('Error loading inventory data: ' + (error.message || 'Unknown error'));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Sort inventory by expiry date (soonest first), items without expiry go last
+  const sortedInventory = [...inventoryItems].sort((a, b) => {
+    if (!a.expiry_date) return 1;
+    if (!b.expiry_date) return -1;
+    return new Date(a.expiry_date) - new Date(b.expiry_date);
+  });
 
   const fetchMLPredictions = async () => {
     setLoading(true);
@@ -51,11 +120,159 @@ const Inventory = () => {
     }
   };
 
+  const handleRestockClick = (item, mode) => {
+    setRestockMode(mode);
+    setRestockItem(item);
+    setOpenDropdownId(null); // Close dropdown
+    
+    if (mode === 'update') {
+      // Pre-fill all fields except stock quantity
+      setRestockForm({
+        sku: item.sku,
+        name: item.name,
+        category: item.category,
+        supplier: item.supplier,
+        unit_price: item.unit_price || '',
+        expiry_date: item.expiry_date || '',
+        stock_quantity: '',
+        reorder_level: item.minimum_stock
+      });
+    } else if (mode === 'add') {
+      // Pre-fill only name and category
+      setRestockForm({
+        sku: '',
+        name: item.name,
+        category: item.category,
+        supplier: '',
+        unit_price: '',
+        expiry_date: '',
+        stock_quantity: '',
+        reorder_level: ''
+      });
+    }
+    
+    setShowRestockModal(true);
+  };
+
+  const toggleDropdown = (itemId) => {
+    setOpenDropdownId(openDropdownId === itemId ? null : itemId);
+  };
+
+  const handleRestockSubmit = async (e) => {
+    e.preventDefault();
+    
+    try {
+      setLoading(true);
+      
+      if (restockMode === 'update') {
+        // Update existing stock - add to current quantity
+        const response = await inventoryAPI.updateStock(restockItem.id, {
+          stock_quantity: parseInt(restockForm.stock_quantity)
+        });
+        
+        if (response.status === 200) {
+          alert('Stock updated successfully!');
+          setShowRestockModal(false);
+          fetchInventory(); // Refresh inventory
+        }
+      } else if (restockMode === 'add') {
+        // Add new stock item
+        const newItem = {
+          item_name: restockForm.name,
+          category: restockForm.category,
+          quantity_available: parseInt(restockForm.stock_quantity),
+          reorder_level: parseInt(restockForm.reorder_level),
+          supplier: restockForm.supplier || null,
+          unit_price: restockForm.unit_price ? parseFloat(restockForm.unit_price) : null,
+          expiry_date: restockForm.expiry_date || null
+        };
+        
+        console.log('Sending new item data:', newItem);
+        const response = await inventoryAPI.addStock(newItem);
+        console.log('Add stock response:', response);
+        
+        if (response.status === 201) {
+          alert('New stock item added successfully!');
+          setShowRestockModal(false);
+          fetchInventory(); // Refresh inventory
+        }
+      }
+    } catch (error) {
+      console.error('Error restocking:', error);
+      console.error('Error response:', error.response);
+      console.error('Error data:', error.response?.data);
+      
+      let errorMessage = 'Failed to update stock';
+      if (error.response?.data) {
+        // Parse error messages from backend
+        if (typeof error.response.data === 'object') {
+          errorMessage = Object.entries(error.response.data)
+            .map(([key, value]) => `${key}: ${value}`)
+            .join('\n');
+        } else {
+          errorMessage = error.response.data;
+        }
+      }
+      
+      alert(`Error: ${errorMessage}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRestockFormChange = (e) => {
+    setRestockForm({
+      ...restockForm,
+      [e.target.name]: e.target.value
+    });
+  };
+
   const filteredItems = activeTab === 'all' 
-    ? inventoryItems 
+    ? sortedInventory 
     : activeTab === 'low_stock' 
-      ? inventoryItems.filter(item => item.is_low_stock)
-      : inventoryItems.filter(item => item.item_type === activeTab);
+      ? sortedInventory.filter(item => item.is_low_stock)
+      : sortedInventory.filter(item => item.item_type === activeTab);
+
+  // Pagination logic
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentItems = filteredItems.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(filteredItems.length / itemsPerPage);
+
+  const handlePageChange = (pageNumber) => {
+    setCurrentPage(pageNumber);
+  };
+
+  const handlePreviousPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
+
+  const handleNextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
+
+  // Reset to page 1 when filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeTab]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (openDropdownId && !event.target.closest('.dropdown')) {
+        setOpenDropdownId(null);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [openDropdownId]);
 
   const columns = [
     { key: 'sku', label: 'SKU' },
@@ -74,7 +291,7 @@ const Inventory = () => {
     { 
       key: 'unit_price', 
       label: 'Unit Price',
-      render: (row) => `$${row.unit_price.toFixed(2)}`
+      render: (row) => row.unit_price ? `$${parseFloat(row.unit_price).toFixed(2)}` : 'N/A'
     },
     { 
       key: 'expiry_date', 
@@ -93,7 +310,27 @@ const Inventory = () => {
       label: 'Actions',
       render: (row) => (
         <div className="action-buttons">
-          <button className="btn btn-primary btn-sm">Restock</button>
+          <div className="dropdown">
+            <button 
+              className="btn btn-primary btn-sm dropdown-toggle" 
+              type="button" 
+              onClick={() => toggleDropdown(row.id)}
+            >
+              Restock
+            </button>
+            <ul className={`dropdown-menu ${openDropdownId === row.id ? 'show' : ''}`}>
+              <li>
+                <button className="dropdown-item" onClick={() => handleRestockClick(row, 'update')}>
+                  Update Existing Stock
+                </button>
+              </li>
+              <li>
+                <button className="dropdown-item" onClick={() => handleRestockClick(row, 'add')}>
+                  Add New Stock
+                </button>
+              </li>
+            </ul>
+          </div>
           <button 
             className="btn btn-secondary btn-sm"
             onClick={() => fetchItemPrediction(row.id)}
@@ -285,7 +522,199 @@ const Inventory = () => {
         </button>
       </div>
 
-      <Table columns={columns} data={filteredItems} />
+      <Table columns={columns} data={currentItems} />
+      
+      {/* Pagination Controls */}
+      {totalPages > 1 && (
+        <div className="pagination-controls">
+          <button 
+            className="btn btn-secondary btn-sm" 
+            onClick={handlePreviousPage}
+            disabled={currentPage === 1}
+          >
+            ← Previous
+          </button>
+          
+          <div className="page-numbers">
+            {[...Array(totalPages)].map((_, index) => (
+              <button
+                key={index + 1}
+                className={`page-btn ${currentPage === index + 1 ? 'active' : ''}`}
+                onClick={() => handlePageChange(index + 1)}
+              >
+                {index + 1}
+              </button>
+            ))}
+          </div>
+          
+          <button 
+            className="btn btn-secondary btn-sm" 
+            onClick={handleNextPage}
+            disabled={currentPage === totalPages}
+          >
+            Next →
+          </button>
+          
+          <div className="page-info">
+            Page {currentPage} of {totalPages} | Showing {currentItems.length} of {filteredItems.length} items
+          </div>
+        </div>
+      )}
+
+      {/* Restock Modal */}
+      {showRestockModal && (
+        <div className="restock-modal-overlay" onClick={() => setShowRestockModal(false)}>
+          <div className="restock-modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>
+                {restockMode === 'update' ? '📦 Update Existing Stock' : '➕ Add New Stock'}
+              </h3>
+              <button className="close-btn" onClick={() => setShowRestockModal(false)}>×</button>
+            </div>
+            
+            <form onSubmit={handleRestockSubmit}>
+              <div className="form-group">
+                <label>SKU</label>
+                <input 
+                  type="text" 
+                  className="form-control" 
+                  name="sku"
+                  value={restockForm.sku}
+                  readOnly
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Item Name *</label>
+                <input 
+                  type="text" 
+                  className="form-control" 
+                  name="name"
+                  value={restockForm.name}
+                  onChange={handleRestockFormChange}
+                  readOnly={restockMode === 'update'}
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Category *</label>
+                <select 
+                  className="form-control" 
+                  name="category"
+                  value={restockForm.category}
+                  onChange={handleRestockFormChange}
+                  disabled={restockMode === 'update'}
+                  required
+                >
+                  <option value="">Select Category</option>
+                  <option value="Medicine">Medicine</option>
+                  <option value="Consumable">Consumable</option>
+                  <option value="Equipment">Equipment</option>
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label>Supplier</label>
+                <input 
+                  type="text" 
+                  className="form-control" 
+                  name="supplier"
+                  value={restockForm.supplier}
+                  onChange={handleRestockFormChange}
+                  readOnly={restockMode === 'update'}
+                  placeholder="Supplier name"
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Unit Price ($)</label>
+                <input 
+                  type="number" 
+                  step="0.01"
+                  className="form-control" 
+                  name="unit_price"
+                  value={restockForm.unit_price}
+                  onChange={handleRestockFormChange}
+                  readOnly={restockMode === 'update'}
+                  placeholder="Price per unit"
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Expiry Date</label>
+                <input 
+                  type="date" 
+                  className="form-control" 
+                  name="expiry_date"
+                  value={restockForm.expiry_date}
+                  onChange={handleRestockFormChange}
+                  readOnly={restockMode === 'update'}
+                />
+                <small className="form-text text-muted">
+                  Leave empty if not applicable (e.g., equipment)
+                </small>
+              </div>
+
+              {restockMode === 'add' && (
+                <div className="form-group">
+                  <label>Reorder Level *</label>
+                  <input 
+                    type="number" 
+                    className="form-control" 
+                    name="reorder_level"
+                    value={restockForm.reorder_level}
+                    onChange={handleRestockFormChange}
+                    placeholder="Minimum stock threshold"
+                    required
+                    min="1"
+                  />
+                </div>
+              )}
+
+              {restockMode === 'update' && (
+                <div className="form-group">
+                  <label>Current Reorder Level</label>
+                  <input 
+                    type="text" 
+                    className="form-control" 
+                    value={restockForm.reorder_level}
+                    readOnly
+                  />
+                </div>
+              )}
+
+              <div className="form-group">
+                <label>Stock Quantity to Add *</label>
+                <input 
+                  type="number" 
+                  className="form-control" 
+                  name="stock_quantity"
+                  value={restockForm.stock_quantity}
+                  onChange={handleRestockFormChange}
+                  placeholder="Enter quantity to add"
+                  required
+                  min="1"
+                />
+                {restockMode === 'update' && (
+                  <small className="form-text text-muted">
+                    This will be added to current stock: {restockItem?.current_stock || 0}
+                  </small>
+                )}
+              </div>
+
+              <div className="modal-actions">
+                <button type="button" className="btn btn-secondary" onClick={() => setShowRestockModal(false)}>
+                  Cancel
+                </button>
+                <button type="submit" className="btn btn-primary" disabled={loading}>
+                  {loading ? 'Processing...' : (restockMode === 'update' ? 'Update Stock' : 'Add Stock')}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
