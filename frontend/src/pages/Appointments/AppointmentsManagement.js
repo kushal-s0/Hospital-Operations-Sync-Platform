@@ -25,6 +25,8 @@ const AppointmentsManagement = () => {
         }
       });
       const data = await response.json();
+      console.log('Stats data:', data);
+      console.log('Current date in browser:', new Date().toLocaleDateString());
       setStats(data);
     } catch (error) {
       console.error('Error fetching stats:', error);
@@ -40,8 +42,14 @@ const AppointmentsManagement = () => {
       if (selectedTab === 'pending') {
         url += '?status=Scheduled';
       } else if (selectedTab === 'today') {
-        const today = new Date().toISOString().split('T')[0];
-        url += `?date=${today}`;
+        // Get today's date in local timezone (YYYY-MM-DD format)
+        const today = new Date();
+        const year = today.getFullYear();
+        const month = String(today.getMonth() + 1).padStart(2, '0');
+        const day = String(today.getDate()).padStart(2, '0');
+        const todayDate = `${year}-${month}-${day}`;
+        console.log('Today filter date:', todayDate);
+        url += `?date=${todayDate}`;
       } else if (selectedTab === 'upcoming') {
         url += '?status=Scheduled';
       } else if (selectedTab === 'all') {
@@ -79,21 +87,29 @@ const AppointmentsManagement = () => {
     if (!window.confirm('Approve this appointment and add to OPD queue?')) return;
 
     setActionLoading(true);
+    console.log('=== APPROVE APPOINTMENT ===');
+    console.log('Appointment ID:', appointmentId);
+    console.log('Token:', localStorage.getItem('access_token') ? 'Present' : 'Missing');
+    
     try {
       const token = localStorage.getItem('access_token');
-      const response = await fetch(
-        `http://localhost:8000/api/appointments/appointments/${appointmentId}/approve/`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
+      const url = `http://localhost:8000/api/appointments/appointments/${appointmentId}/approve/`;
+      console.log('Calling URL:', url);
+      
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
         }
-      );
+      });
+
+      console.log('Response status:', response.status);
+      console.log('Response OK:', response.ok);
 
       if (response.ok) {
         const data = await response.json();
+        console.log('Success response:', data);
         alert(data.message);
         
         // Update the appointment status locally to remove buttons immediately
@@ -109,10 +125,12 @@ const AppointmentsManagement = () => {
         setSelectedAppointment(null);
       } else {
         const error = await response.json();
+        console.error('Error response:', error);
         alert(`Error: ${error.error || 'Failed to approve appointment'}`);
       }
     } catch (error) {
-      alert('Network error. Please try again.');
+      console.error('Network error details:', error);
+      alert('Network error. Please try again. Check if backend server is running.');
       console.error('Error approving appointment:', error);
     } finally {
       setActionLoading(false);
