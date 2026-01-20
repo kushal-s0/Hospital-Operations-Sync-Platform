@@ -13,6 +13,12 @@ const OPDQueue = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   
+  // Search and filter state
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterStatus, setFilterStatus] = useState('all');
+  const [filterPriority, setFilterPriority] = useState('all');
+  const [filterDepartment, setFilterDepartment] = useState('all');
+  
   // Lists for dropdowns
   const [doctors, setDoctors] = useState([]);
   const [departments, setDepartments] = useState([]);
@@ -36,7 +42,10 @@ const OPDQueue = () => {
   // Fetch wait time prediction on mount
   useEffect(() => {
     fetchQueue();
-    fetchWaitTimePrediction();
+    // Don't fetch wait time prediction for doctors
+    if (!isDoctor) {
+      fetchWaitTimePrediction();
+    }
     fetchDoctorsAndDepartments();
   }, []);
 
@@ -230,19 +239,44 @@ const OPDQueue = () => {
     }
   };
 
-  const columns = [
+  // Filter and search queue data
+  const filteredQueue = queue.filter(item => {
+    // Search by patient name, token number, or contact
+    const searchLower = searchTerm.toLowerCase();
+    const patientName = item.patient_name || 
+      (item.patient ? `${item.patient.first_name} ${item.patient.last_name}` : '');
+    const matchesSearch = searchTerm === '' ||
+      patientName.toLowerCase().includes(searchLower) ||
+      String(item.token_number).includes(searchLower) ||
+      (item.patient?.contact_number || '').includes(searchLower);
+    
+    // Filter by status
+    const matchesStatus = filterStatus === 'all' || item.status === filterStatus;
+    
+    // Filter by priority
+    const matchesPriority = filterPriority === 'all' || item.priority === filterPriority;
+    
+    // Filter by department
+    const matchesDepartment = filterDepartment === 'all' || 
+      item.department_name === filterDepartment ||
+      (item.department && String(item.department) === filterDepartment);
+    
+    return matchesSearch && matchesStatus && matchesPriority && matchesDepartment;
+  });
+
+  // Build columns array - defined in render to access component methods
+  let columns = [
     { key: 'token_number', label: 'Token #' },
     { 
       key: 'patient_name', 
       label: 'Patient Name',
-      render: (row) => {
-        // Use the serialized patient_name or construct from patient object
+      render: function(row) {
         if (row.patient_name) {
           return row.patient_name;
         }
         const patient = row.patient;
         if (patient) {
-          return `${patient.first_name} ${patient.last_name}`;
+          return patient.first_name + ' ' + patient.last_name;
         }
         return 'N/A';
       }
@@ -250,60 +284,58 @@ const OPDQueue = () => {
     { 
       key: 'department_name', 
       label: 'Department',
-      render: (row) => row.department_name || row.department || 'N/A'
+      render: function(row) { return row.department_name || row.department || 'N/A'; }
     },
     { 
       key: 'doctor_name', 
       label: 'Doctor',
-      render: (row) => row.doctor_name || 'N/A'
+      render: function(row) { return row.doctor_name || 'N/A'; }
     },
     { 
       key: 'priority', 
       label: 'Priority',
-      render: (row) => <StatusBadge status={row.priority} />
+      render: function(row) { return React.createElement(StatusBadge, {status: row.priority}); }
     },
     { 
       key: 'status', 
       label: 'Status',
-      render: (row) => <StatusBadge status={row.status} />
+      render: function(row) { return React.createElement(StatusBadge, {status: row.status}); }
     },
     { 
       key: 'check_in_time', 
       label: 'Check-in Time',
-      render: (row) => row.check_in_time ? new Date(row.check_in_time).toLocaleTimeString() : 'N/A'
-    },
-    { 
-      key: 'estimated_wait_time', 
-      label: 'Est. Wait',
-      render: (row) => row.status === 'waiting' && row.estimated_wait_time 
-        ? `${row.estimated_wait_time} min` 
-        : '-'
-    },
-    {
-      key: 'actions',
-      label: 'Actions',
-      render: (row) => (
-        <div className="action-buttons">
-          {row.status === 'waiting' && (
-            <button 
-              className="btn btn-primary btn-sm"
-              onClick={() => handleStartConsultation(row)}
-            >
-              Start
-            </button>
-          )}
-          {row.status === 'in_consultation' && (
-            <button 
-              className="btn btn-success btn-sm"
-              onClick={() => handleCompleteConsultation(row)}
-            >
-              Complete
-            </button>
-          )}
-        </div>
-      )
+      render: function(row) { return row.check_in_time ? new Date(row.check_in_time).toLocaleTimeString() : 'N/A'; }
     }
   ];
+
+  if (!isDoctor) {
+    columns.push({
+      key: 'estimated_wait_time', 
+      label: 'Est. Wait',
+      render: function(row) {
+        return row.status === 'waiting' && row.estimated_wait_time 
+          ? row.estimated_wait_time + ' min' 
+          : '-';
+      }
+    });
+  }
+
+  columns.push({
+    key: 'actions',
+    label: 'Actions',
+    render: function(row) {
+      return React.createElement('div', {className: 'action-buttons'},
+        row.status === 'waiting' && React.createElement('button', {
+          className: 'btn btn-primary btn-sm',
+          onClick: function() { handleStartConsultation(row); }
+        }, 'Start'),
+        row.status === 'in_consultation' && React.createElement('button', {
+          className: 'btn btn-success btn-sm',
+          onClick: function() { handleCompleteConsultation(row); }
+        }, 'Complete')
+      );
+    }
+  });
 
   return (
     <div className="opd-queue">
@@ -313,18 +345,104 @@ const OPDQueue = () => {
           <p>Dynamic queue management with ML-powered wait time predictions</p>
         </div>
         <div className="header-actions">
-          <button 
-            className="btn btn-secondary"
-            onClick={() => setShowPredictionPanel(!showPredictionPanel)}
-          >
-            🤖 {showPredictionPanel ? 'Hide' : 'Show'} Wait Time Predictor
-          </button>
+          {/* Hide ML predictor button for doctors */}
+          {!isDoctor && (
+            <button 
+              className="btn btn-secondary"
+              onClick={() => setShowPredictionPanel(!showPredictionPanel)}
+            >
+              🤖 {showPredictionPanel ? 'Hide' : 'Show'} Wait Time Predictor
+            </button>
+          )}
           {isNurse && (
             <button 
               className="btn btn-primary"
               onClick={() => setShowAddPatientForm(true)}
             >
               + Add Patient
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Search and Filters */}
+      <div className="search-filter-section">
+        <div className="search-bar">
+          <input
+            type="text"
+            placeholder="🔍 Search by patient name, token number, or contact..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="search-input"
+          />
+          {searchTerm && (
+            <button 
+              className="clear-search"
+              onClick={() => setSearchTerm('')}
+              title="Clear search"
+            >
+              ✕
+            </button>
+          )}
+        </div>
+        
+        <div className="filters">
+          <div className="filter-group">
+            <label>Status:</label>
+            <select 
+              value={filterStatus} 
+              onChange={(e) => setFilterStatus(e.target.value)}
+              className="filter-select"
+            >
+              <option value="all">All Status</option>
+              <option value="waiting">Waiting</option>
+              <option value="in_consultation">In Consultation</option>
+              <option value="completed">Completed</option>
+              <option value="cancelled">Cancelled</option>
+            </select>
+          </div>
+          
+          <div className="filter-group">
+            <label>Priority:</label>
+            <select 
+              value={filterPriority} 
+              onChange={(e) => setFilterPriority(e.target.value)}
+              className="filter-select"
+            >
+              <option value="all">All Priority</option>
+              <option value="emergency">Emergency</option>
+              <option value="urgent">Urgent</option>
+              <option value="normal">Normal</option>
+            </select>
+          </div>
+          
+          <div className="filter-group">
+            <label>Department:</label>
+            <select 
+              value={filterDepartment} 
+              onChange={(e) => setFilterDepartment(e.target.value)}
+              className="filter-select"
+            >
+              <option value="all">All Departments</option>
+              {departments.map(dept => (
+                <option key={dept.department_id} value={dept.department_name}>
+                  {dept.department_name}
+                </option>
+              ))}
+            </select>
+          </div>
+          
+          {(searchTerm || filterStatus !== 'all' || filterPriority !== 'all' || filterDepartment !== 'all') && (
+            <button 
+              className="btn btn-secondary btn-sm"
+              onClick={() => {
+                setSearchTerm('');
+                setFilterStatus('all');
+                setFilterPriority('all');
+                setFilterDepartment('all');
+              }}
+            >
+              Clear All Filters
             </button>
           )}
         </div>
@@ -494,8 +612,8 @@ const OPDQueue = () => {
         </div>
       )}
 
-      {/* ML Wait Time Prediction Panel */}
-      {showPredictionPanel && (
+      {/* ML Wait Time Prediction Panel - Hidden for doctors */}
+      {!isDoctor && showPredictionPanel && (
         <div className="wait-time-predictor">
           <h2>⏱️ ML Wait Time Prediction</h2>
           
@@ -587,20 +705,44 @@ const OPDQueue = () => {
 
       <div className="queue-stats">
         <div className="stat-item">
-          <span className="stat-number">{queue.filter(q => q.status === 'waiting').length}</span>
+          <span className="stat-number">{filteredQueue.filter(q => q.status === 'waiting').length}</span>
           <span className="stat-text">Waiting</span>
         </div>
         <div className="stat-item">
-          <span className="stat-number">{queue.filter(q => q.status === 'in_consultation').length}</span>
+          <span className="stat-number">{filteredQueue.filter(q => q.status === 'in_consultation').length}</span>
           <span className="stat-text">In Consultation</span>
         </div>
         <div className="stat-item">
-          <span className="stat-number">~{waitTimePrediction?.predicted_wait_time_minutes || 18}</span>
-          <span className="stat-text">🤖 ML Predicted Wait (min)</span>
+          <span className="stat-number">{filteredQueue.length}/{queue.length}</span>
+          <span className="stat-text">Showing/Total</span>
         </div>
+        {/* Hide ML prediction stat for doctors */}
+        {!isDoctor && (
+          <div className="stat-item">
+            <span className="stat-number">~{waitTimePrediction?.predicted_wait_time_minutes || 18}</span>
+            <span className="stat-text">🤖 ML Predicted Wait (min)</span>
+          </div>
+        )}
       </div>
 
-      <Table columns={columns} data={queue} />
+      <Table columns={columns} data={filteredQueue} />
+      
+      {filteredQueue.length === 0 && queue.length > 0 && (
+        <div className="no-results">
+          <p>No patients found matching your search criteria.</p>
+          <button 
+            className="btn btn-secondary"
+            onClick={() => {
+              setSearchTerm('');
+              setFilterStatus('all');
+              setFilterPriority('all');
+              setFilterDepartment('all');
+            }}
+          >
+            Clear Filters
+          </button>
+        </div>
+      )}
     </div>
   );
 };

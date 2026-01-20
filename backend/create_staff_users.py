@@ -104,6 +104,40 @@ def create_staff_users():
             'email': 'michael.b@hospital.com',
             'password': 'pharma123',
         },
+        {
+            'staff_id': 6,
+            'hospital_id': 2,
+            'department_id': 5,
+            'first_name': 'David',
+            'last_name': 'Wilson',
+            'role': 'Doctor',
+            'phone_number': '9876543215',
+            'email': 'david.w@hospital.com',
+            'password': 'doctor123',
+        },
+        {
+            'staff_id': 7,
+            'hospital_id': 3,
+            'department_id': 6,
+            'first_name': 'Lisa',
+            'last_name': 'Anderson',
+            'role': 'Doctor',
+            'phone_number': '9876543216',
+            'email': 'lisa.a@hospital.com',
+            'password': 'doctor123',
+        },
+        {
+            'staff_id': 8,
+            'hospital_id': 3,
+            'department_id': 6,
+            'first_name': 'Robert',
+            'last_name': 'Taylor',
+            'role': 'Nurse',
+            'phone_number': '9876543217',
+            'email': 'robert.t@hospital.com',
+            'password': 'nurse123',
+        },
+
     ]
     
     print("=" * 60)
