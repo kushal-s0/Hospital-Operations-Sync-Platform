@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from apps.authentication.models import Appointment, Patient, StaffUser, Department
+from apps.utils import get_ist_today
 
 
 class AppointmentBookingSerializer(serializers.Serializer):
@@ -20,9 +21,9 @@ class AppointmentBookingSerializer(serializers.Serializer):
     reason_for_visit = serializers.CharField(max_length=200)
     
     def validate_appointment_date(self, value):
-        """Ensure appointment date is not in the past"""
-        from datetime import date
-        if value < date.today():
+        """Ensure appointment date is not in the past (using IST timezone)"""
+        today_ist = get_ist_today()
+        if value < today_ist:
             raise serializers.ValidationError("Appointment date cannot be in the past")
         return value
 

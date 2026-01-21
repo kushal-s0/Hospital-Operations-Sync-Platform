@@ -9,6 +9,7 @@ import traceback
 
 from apps.authentication.models import Appointment, Patient, StaffUser, OPDQueue, Department
 from .serializers import AppointmentBookingSerializer, AppointmentSerializer, AppointmentStatusUpdateSerializer
+from apps.utils import get_ist_now, get_ist_today
 
 
 @api_view(['POST'])
@@ -62,7 +63,7 @@ def book_appointment(request):
                     date_of_birth=data['date_of_birth'],
                     gender=data['gender'],
                     address=data.get('address', ''),
-                    registration_date=timezone.now().date(),
+                    registration_date=get_ist_today(),
                 )
                 patient.save()
                 print(f"Patient created: {patient.patient_id}")
@@ -144,6 +145,10 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         if date_filter:
             queryset = queryset.filter(appointment_date=date_filter)
             print(f"Filtering by date: {date_filter}")
+            print(f"Current server date (IST): {get_ist_today()}")
+            print(f"Appointments found for {date_filter}: {queryset.count()}")
+            for apt in queryset:
+                print(f"  - Appointment {apt.appointment_id}: {apt.appointment_date}")
         
         # Filter by doctor
         doctor_id = self.request.query_params.get('doctor_id', None)
@@ -153,7 +158,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         # Get upcoming appointments by default
         show_all = self.request.query_params.get('all', None)
         if not show_all:
-            queryset = queryset.filter(appointment_date__gte=timezone.now().date())
+            queryset = queryset.filter(appointment_date__gte=get_ist_today())
         
         return queryset.order_by('appointment_date', 'appointment_time')
     
@@ -162,106 +167,138 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         """
         Approve an appointment and add to OPD queue.
         """
+        from django.db import connection
+        
         appointment = self.get_object()
         
         print("=" * 80)
-        print(f"APPROVING APPOINTMENT #{appointment.appointment_id}")
-        print("=" * 80)
-        print(f"Patient: {appointment.patient.full_name} (ID: {appointment.patient_id})")
-        print(f"Doctor ID: {appointment.doctor_id}")
-        print(f"Appointment Date: {appointment.appointment_date}")
-        print(f"Today's Date: {timezone.now().date()}")
-        print(f"Current Status: {appointment.status}")
+        print(f"APPROVE APPOINTMENT CALLED - ID: {appointment.appointment_id}")
+        print(f"Current status: {appointment.status}")
+        print(f"Appointment date: {appointment.appointment_date}")
+        print(f"Today's date (IST): {get_ist_today()}")
         print("=" * 80)
         
         if appointment.status == 'Cancelled':
+            print("ERROR: Cannot approve cancelled appointment")
             return Response({
                 'error': 'Cannot approve a cancelled appointment'
             }, status=status.HTTP_400_BAD_REQUEST)
         
         if appointment.status in ['Completed', 'Approved']:
+            print("INFO: Appointment already processed")
             return Response({
                 'message': 'Appointment already processed'
             }, status=status.HTTP_200_OK)
         
         try:
-            with transaction.atomic():
-                # Update appointment status to Completed to prevent re-approval
-                appointment.status = 'Completed'
-                appointment.save()
-                print("✅ Appointment status updated to 'Completed'")
+            # Step 1: Update appointment status
+            print(f"\nSTEP 1: Updating appointment status to Completed...")
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    "UPDATE appointments SET status = %s WHERE appointment_id = %s",
+                    ['Completed', appointment.appointment_id]
+                )
+                affected_rows = cursor.rowcount
+                print(f"SUCCESS: Updated {affected_rows} row(s)")
+            
+            # Step 2: Check if appointment is for today (IST)
+            today = get_ist_today()
+            apt_date = appointment.appointment_date
+            
+            print(f"\nSTEP 2: Date comparison")
+            print(f"  UTC time:         {timezone.now()}")
+            print(f"  IST time:         {get_ist_now()}")
+            print(f"  Appointment date: {apt_date} (type: {type(apt_date)})")
+            print(f"  Today's date:     {today} (type: {type(today)})")
+            print(f"  Are they equal?   {apt_date == today}")
+            
+            if apt_date != today:
+                print(f"\nINFO: Appointment is NOT for today - skipping OPD queue")
+                return Response({
+                    'message': 'Appointment approved. Patient will be added to queue on appointment date.'
+                }, status=status.HTTP_200_OK)
+            
+            print(f"\nSTEP 2: Appointment is for today - creating OPD queue entry...")
+            
+            # Step 3: Validate doctor
+            if not appointment.doctor_id:
+                print("ERROR: No doctor assigned")
+                return Response({
+                    'error': 'No doctor assigned to this appointment'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            try:
+                doctor = StaffUser.objects.get(staff_id=appointment.doctor_id)
+                print(f"SUCCESS: Found doctor: {doctor.full_name} (ID: {doctor.staff_id})")
+            except StaffUser.DoesNotExist:
+                print(f"ERROR: Doctor {appointment.doctor_id} not found")
+                return Response({
+                    'error': f'Doctor with staff_id {appointment.doctor_id} not found'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Step 4: Get next token number
+            print(f"\nSTEP 3: Calculating next token number...")
+            # Use IST date for token calculation
+            today = get_ist_today()
+            max_token = OPDQueue.objects.filter(
+                doctor_id=appointment.doctor_id,
+                check_in_time__date=today
+            ).aggregate(models.Max('token_number'))['token_number__max']
+            
+            next_token = (max_token or 0) + 1
+            print(f"SUCCESS: Next token number: {next_token}")
+            
+            # Step 5: Get next OPD queue ID
+            print(f"\nSTEP 4: Getting next OPD queue ID...")
+            max_opd_id = OPDQueue.objects.all().aggregate(models.Max('id'))['id__max']
+            next_opd_id = (max_opd_id or 0) + 1
+            print(f"SUCCESS: Next OPD queue ID: {next_opd_id}")
+            
+            # Step 6: Insert into OPD queue
+            print(f"\nSTEP 5: Inserting into opd_queue table...")
+            print(f"  - Patient ID: {appointment.patient.patient_id}")
+            print(f"  - Doctor ID: {appointment.doctor_id}")
+            print(f"  - Department ID: {doctor.department_id if doctor.department else 'None'}")
+            print(f"  - Token: {next_token}")
+            
+            # Get current time in IST for check_in_time
+            check_in_time_ist = get_ist_now()
+            print(f"  - Check-in time (IST): {check_in_time_ist}")
+            
+            with connection.cursor() as cursor:
+                cursor.execute("""
+                    INSERT INTO opd_queue 
+                    (id, patient_id, doctor_id, department_id, token_number, status, 
+                     priority, check_in_time, notes, created_at, updated_at)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, NOW(), NOW())
+                """, [
+                    next_opd_id,
+                    appointment.patient.patient_id,
+                    appointment.doctor_id,
+                    doctor.department_id if doctor.department else None,
+                    next_token,
+                    'waiting',
+                    'normal',
+                    check_in_time_ist,
+                    f"Appointment approved: {appointment.reason_for_visit}"
+                ])
+                affected_rows = cursor.rowcount
+                print(f"SUCCESS: Inserted {affected_rows} row(s) into opd_queue")
+            
+            print(f"\n{'=' * 80}")
+            print(f"COMPLETE: Created OPD queue entry #{next_opd_id} with token #{next_token}")
+            print(f"{'=' * 80}\n")
+            
+            return Response({
+                'message': 'Appointment approved and added to OPD queue',
+                'token_number': next_token,
+                'opd_queue_id': next_opd_id
+            }, status=status.HTTP_200_OK)
                 
-                # Check if appointment is for today
-                if appointment.appointment_date == timezone.now().date():
-                    print("📅 Appointment is for TODAY - Adding to OPD queue...")
-                    
-                    # Get the doctor as StaffUser instance
-                    if not appointment.doctor_id:
-                        print("❌ ERROR: No doctor assigned!")
-                        return Response({
-                            'error': 'No doctor assigned to this appointment'
-                        }, status=status.HTTP_400_BAD_REQUEST)
-                    
-                    doctor = StaffUser.objects.get(staff_id=appointment.doctor_id)
-                    print(f"👨‍⚕️ Doctor: {doctor.full_name} (ID: {doctor.staff_id})")
-                    print(f"🏥 Department: {doctor.department.department_name if doctor.department else 'None'}")
-                    
-                    # Add to OPD Queue
-                    # Get next token number for the doctor/department
-                    today = timezone.now().date()
-                    max_token = OPDQueue.objects.filter(
-                        doctor_id=appointment.doctor_id,
-                        check_in_time__date=today
-                    ).aggregate(models.Max('token_number'))['token_number__max']
-                    
-                    next_token = (max_token or 0) + 1
-                    print(f"🎫 Next Token Number: {next_token}")
-                    
-                    # Create OPD queue entry
-                    current_time = timezone.now()
-                    opd_entry = OPDQueue(
-                        patient=appointment.patient,
-                        doctor=doctor,
-                        department=doctor.department,
-                        token_number=next_token,
-                        status='waiting',
-                        priority='normal',
-                        check_in_time=current_time,
-                        notes=f"Appointment approved: {appointment.reason_for_visit}",
-                        created_at=current_time,
-                        updated_at=current_time
-                    )
-                    opd_entry.save()
-                    
-                    print("=" * 80)
-                    print("✅ OPD QUEUE ENTRY CREATED SUCCESSFULLY!")
-                    print(f"   OPD ID: {opd_entry.id}")
-                    print(f"   Patient ID: {opd_entry.patient_id}")
-                    print(f"   Doctor ID: {opd_entry.doctor_id}")
-                    print(f"   Department ID: {opd_entry.department_id}")
-                    print(f"   Token: #{opd_entry.token_number}")
-                    print(f"   Status: {opd_entry.status}")
-                    print(f"   Check-in: {opd_entry.check_in_time}")
-                    print(f"   Created: {opd_entry.created_at}")
-                    print(f"   Updated: {opd_entry.updated_at}")
-                    print("=" * 80)
-                    
-                    return Response({
-                        'message': 'Appointment approved and added to OPD queue',
-                        'token_number': next_token,
-                        'opd_queue_id': opd_entry.id
-                    }, status=status.HTTP_200_OK)
-                else:
-                    print(f"📅 Appointment is for {appointment.appointment_date} (NOT today)")
-                    print("   → Not adding to OPD queue yet")
-                    return Response({
-                        'message': 'Appointment approved. Patient will be added to queue on appointment date.'
-                    }, status=status.HTTP_200_OK)
-                    
         except Exception as e:
-            print("=" * 80)
-            print(f"❌ ERROR DURING APPROVAL: {str(e)}")
-            print("=" * 80)
+            print(f"\n{'!' * 80}")
+            print(f"ERROR OCCURRED: {str(e)}")
+            print(f"{'!' * 80}")
             import traceback
             traceback.print_exc()
             return Response({
@@ -296,6 +333,8 @@ class AppointmentViewSet(viewsets.ModelViewSet):
     def stats(self, request):
         """Get appointment statistics"""
         today = timezone.now().date()
+        print(f"Stats endpoint - Today's date: {today}")
+        print(f"Current timezone: {timezone.now()}")
         
         stats = {
             'total_pending': Appointment.objects.filter(status='Scheduled', appointment_date__gte=today).count(),
@@ -306,6 +345,7 @@ class AppointmentViewSet(viewsets.ModelViewSet):
             ).exclude(status='Cancelled').count(),
         }
         
+        print(f"Stats: {stats}")
         return Response(stats)
 
 
