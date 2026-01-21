@@ -173,4 +173,11 @@ export const interHospitalAPI = {
   getLatestCapacity: () => api.get('/interhospital/capacity/latest/'),
 };
 
+// Payment Transactions API
+export const paymentAPI = {
+  getTransactionHistory: () => api.get('/payments/transaction_history/'),
+  createOrder: (data) => api.post('/payments/create_order/', data),
+  verifyPayment: (data) => api.post('/payments/verify_payment/', data),
+};
+
 export default api;
