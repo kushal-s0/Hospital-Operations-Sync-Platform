@@ -5,6 +5,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from django.db import transaction, models
 from django.utils import timezone
 from datetime import datetime, timedelta
+import traceback
 
 from apps.authentication.models import Appointment, Patient, StaffUser, OPDQueue, Department
 from .serializers import AppointmentBookingSerializer, AppointmentSerializer, AppointmentStatusUpdateSerializer

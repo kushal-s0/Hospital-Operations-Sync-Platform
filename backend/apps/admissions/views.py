@@ -97,16 +97,14 @@ class AdmissionViewSet(viewsets.ModelViewSet):
                 with connection.cursor() as cursor:
                     cursor.execute("""
                         INSERT INTO admissions 
-                        (admission_id, patient_id, doctor_id, admission_time, diagnosis, 
-                         treatment_plan, bed_id, condition_level, status)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        (admission_id, patient_id, doctor_id, admission_time, 
+                         bed_id, condition_level, status)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s)
                     """, [
                         next_admission_id,
                         opd_entry.patient_id,
                         doctor_id,
                         get_ist_now(),
-                        f"Admitted from OPD (Token: {opd_entry.token_number})",
-                        admission_notes or "Initial admission",
                         bed_id,
                         condition_level,
                         'Active'
