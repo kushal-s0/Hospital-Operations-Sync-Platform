@@ -31,7 +31,7 @@ else:
 ID: {q.id}
 Patient: {q.patient.full_name if q.patient else 'None'} (ID: {q.patient_id})
 Doctor: {q.doctor.full_name if q.doctor else 'None'} (ID: {q.doctor_id})
-Department: {q.department.name if q.department else 'None'} (ID: {q.department_id})
+Department: {q.department.department_name if q.department else 'None'} (ID: {q.department_id})
 Token: #{q.token_number}
 Status: {q.status}
 Priority: {q.priority}
