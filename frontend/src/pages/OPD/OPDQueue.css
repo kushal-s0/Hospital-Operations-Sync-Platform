@@ -30,7 +30,7 @@
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+  background: var(--gradient-brand-deep);
   color: white;
 }
 
@@ -208,7 +208,7 @@
 .form-group select:focus,
 .form-group textarea:focus {
   outline: none;
-  border-color: #1e3c72;
+  border-color: var(--color-primary-900);
   box-shadow: 0 0 0 3px rgba(30, 60, 114, 0.1);
 }
 
@@ -277,7 +277,7 @@
 
 .search-input:focus {
   outline: none;
-  border-color: #1e3c72;
+  border-color: var(--color-primary-900);
   box-shadow: 0 0 0 3px rgba(30, 60, 114, 0.1);
 }
 
@@ -338,7 +338,7 @@
 
 .filter-select:focus {
   outline: none;
-  border-color: #1e3c72;
+  border-color: var(--color-primary-900);
   box-shadow: 0 0 0 3px rgba(30, 60, 114, 0.1);
 }
 
@@ -395,7 +395,7 @@
   display: block;
   font-size: 2rem;
   font-weight: 700;
-  color: #1e3c72;
+  color: var(--color-primary-900);
 }
 
 .stat-text {

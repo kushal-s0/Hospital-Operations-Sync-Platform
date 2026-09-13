@@ -47,7 +47,7 @@
 .form-group input:focus,
 .form-group select:focus {
   outline: none;
-  border-color: #1e3c72;
+  border-color: var(--color-primary-900);
 }
 
 .form-actions {
@@ -87,7 +87,7 @@
   display: block;
   font-size: 2rem;
   font-weight: 700;
-  color: #1e3c72;
+  color: var(--color-primary-900);
 }
 
 .admission-stats .stat-text {
@@ -125,7 +125,7 @@
 
 .search-input:focus {
   outline: none;
-  border-color: #1e3c72;
+  border-color: var(--color-primary-900);
   box-shadow: 0 0 0 3px rgba(30, 60, 114, 0.1);
 }
 
@@ -185,7 +185,7 @@
 
 .filter-select:focus {
   outline: none;
-  border-color: #1e3c72;
+  border-color: var(--color-primary-900);
 }
 
 .no-results {
@@ -286,7 +286,7 @@
   font-size: 1.1rem;
   margin-bottom: 16px;
   padding-bottom: 8px;
-  border-bottom: 2px solid #1e3c72;
+  border-bottom: 2px solid var(--color-primary-900);
 }
 
 .details-grid {

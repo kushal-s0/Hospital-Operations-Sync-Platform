@@ -119,8 +119,7 @@ const iconMap = {
   appointments: <AppointmentsIcon />
 };
 
-const Sidebar = () => {
-  
+const Sidebar = ({ isOpen = false, onClose }) => {
   const [userRole, setUserRole] = useState(null);
   const location = useLocation();
 
@@ -137,7 +136,7 @@ const Sidebar = () => {
 
   const isReceptionist = userRole === 'Receptionist';
   const isAdmin = userRole === 'Admin';
-  
+
   // Check if current path is a receptionist page
   const isOnReceptionistPage = location.pathname.startsWith('/receptionist');
 
@@ -151,7 +150,7 @@ const Sidebar = () => {
     { path: '/inter-hospital', label: 'Inter-Hospital', icon: 'hospital', roles: ['Admin'] },
     { path: '/receptionist-dashboard', label: 'Receptionist Portal', icon: 'receptionist', roles: ['Admin'] },
   ];
-  
+
   const receptionistMenuItems = [
     { path: '/receptionist-dashboard', label: 'Dashboard', icon: 'dashboard', receptionist: true },
     { path: '/receptionist-billing', label: 'Billing', icon: 'billing', receptionist: true },
@@ -167,26 +166,64 @@ const Sidebar = () => {
     : []);
 
   return (
-    <aside className="sidebar">
-      {showReceptionistMenu && (
-        <div className="sidebar-header">
-          <span className="sidebar-title">Receptionist Menu</span>
+    <aside className={`sidebar${isOpen ? ' sidebar-open' : ''}`} aria-label="Main navigation">
+      <div className="sidebar-brand">
+        <div className="brand-mark" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M9.5 3h5a1 1 0 0 1 1 1v4.5H20a1 1 0 0 1 1 1v5a1 1 0 0 1-1 1h-4.5V20a1 1 0 0 1-1 1h-5a1 1 0 0 1-1-1v-4.5H4a1 1 0 0 1-1-1v-5a1 1 0 0 1 1-1h4.5V4a1 1 0 0 1 1-1Z" />
+          </svg>
         </div>
-      )}
+        <div className="brand-text">
+          <span className="brand-title">HealthCare Plus</span>
+          <span className="brand-subtitle">Operations Sync</span>
+        </div>
+        <button type="button" className="sidebar-close" onClick={onClose} aria-label="Close menu">
+          <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
+            <path d="M5 5L15 15M15 5L5 15" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+          </svg>
+        </button>
+      </div>
+
+      <div className="sidebar-section-label">
+        {showReceptionistMenu ? 'Receptionist Menu' : 'Main Menu'}
+      </div>
+
       <nav className="sidebar-nav">
-        {menuItems.map((item) => (
+        {menuItems.map((item, index) => (
           <NavLink
             key={item.path}
             to={item.path}
+            style={{ '--i': index }}
             className={({ isActive }) =>
               `sidebar-link ${isActive ? 'active' : ''}`
             }
           >
             <span className="sidebar-icon">{iconMap[item.icon]}</span>
             <span className="sidebar-label">{item.label}</span>
+            <span className="sidebar-active-dot" aria-hidden="true" />
           </NavLink>
         ))}
+
+        {/* Admins browsing the receptionist portal need a way back */}
+        {isAdmin && isOnReceptionistPage && (
+          <NavLink to="/dashboard" className="sidebar-back-link">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
+              <path d="M12.5 15L7.5 10L12.5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            Back to admin menu
+          </NavLink>
+        )}
       </nav>
+
+      <div className="sidebar-footer">
+        <div className="system-status">
+          <span className="status-pulse" aria-hidden="true" />
+          <div>
+            <p className="status-title">All systems live</p>
+            <p className="status-text">Real-time sync active</p>
+          </div>
+        </div>
+      </div>
     </aside>
   );
 };

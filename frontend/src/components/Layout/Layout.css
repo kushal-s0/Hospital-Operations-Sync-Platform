@@ -1,46 +1,22 @@
 /* ============================================
-   LAYOUT - Professional Hospital UI
+   LAYOUT - App shell (sidebar + glass header)
    ============================================ */
 
 .layout {
-  display: flex;
   min-height: 100vh;
-  background: var(--color-neutral-50);
 }
 
 .main-content {
-  flex: 1;
   margin-left: var(--sidebar-width);
-  margin-top: var(--header-height);
-  padding: var(--spacing-6);
-  background-color: var(--color-neutral-50);
-  min-height: calc(100vh - var(--header-height));
+  padding: calc(var(--header-height) + var(--spacing-8)) var(--spacing-8) var(--spacing-10);
+  min-height: 100vh;
   max-width: 100%;
   overflow-x: hidden;
 }
 
-/* === Content Container (for max-width pages) === */
-.content-container {
-  max-width: var(--content-max-width);
-  margin: 0 auto;
-}
-
-/* === Page Header === */
-.page-header {
-  margin-bottom: var(--spacing-6);
-}
-
-.page-title {
-  font-size: var(--font-size-3xl);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-neutral-900);
-  margin-bottom: var(--spacing-2);
-}
-
-.page-subtitle {
-  font-size: var(--font-size-base);
-  color: var(--color-neutral-600);
-  font-weight: var(--font-weight-normal);
+/* Mobile drawer backdrop */
+.sidebar-scrim {
+  display: none;
 }
 
 /* === Breadcrumbs === */
@@ -53,7 +29,7 @@
 }
 
 .breadcrumb-item {
-  color: var(--color-neutral-600);
+  color: var(--color-neutral-500);
   text-decoration: none;
   transition: color var(--transition-fast);
 }
@@ -72,13 +48,33 @@
 }
 
 /* === Responsive === */
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
   .main-content {
     margin-left: 0;
-    padding: var(--spacing-4);
+    padding: calc(var(--header-height) + var(--spacing-6)) var(--spacing-6) var(--spacing-8);
   }
 
-  .page-title {
-    font-size: var(--font-size-2xl);
+  .sidebar-scrim {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.45);
+    -webkit-backdrop-filter: blur(4px);
+    backdrop-filter: blur(4px);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+    z-index: calc(var(--z-fixed) + 4);
+  }
+
+  .layout.sidebar-is-open .sidebar-scrim {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
+@media (max-width: 640px) {
+  .main-content {
+    padding: calc(var(--header-height) + var(--spacing-4)) var(--spacing-4) var(--spacing-6);
   }
 }

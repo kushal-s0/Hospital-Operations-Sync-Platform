@@ -53,7 +53,7 @@
 }
 
 .api-info-card {
-  background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+  background: var(--gradient-brand-deep);
   color: white;
   padding: 24px;
   border-radius: 12px;

@@ -29,7 +29,7 @@
 }
 
 .add-bed-btn {
-  background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+  background: var(--gradient-brand-deep);
   color: white;
   box-shadow: 0 4px 6px rgba(30, 60, 114, 0.3);
 }
@@ -88,7 +88,7 @@
   border-left: 4px solid;
 }
 
-.stat-card.total { border-left-color: #1e3c72; }
+.stat-card.total { border-left-color: var(--color-primary-900); }
 .stat-card.available { border-left-color: #16a34a; }
 .stat-card.occupied { border-left-color: #ea580c; }
 .stat-card.maintenance { border-left-color: #dc2626; }
@@ -126,7 +126,7 @@
 
 .search-input:focus {
   outline: none;
-  border-color: #1e3c72;
+  border-color: var(--color-primary-900);
   box-shadow: 0 0 0 3px rgba(30, 60, 114, 0.1);
 }
 
@@ -355,7 +355,7 @@
 .form-group input:focus,
 .form-group select:focus {
   outline: none;
-  border-color: #1e3c72;
+  border-color: var(--color-primary-900);
   box-shadow: 0 0 0 3px rgba(30, 60, 114, 0.1);
 }
 
@@ -418,7 +418,7 @@
 }
 
 .submit-btn {
-  background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+  background: var(--gradient-brand-deep);
   color: white;
   box-shadow: 0 4px 6px rgba(30, 60, 114, 0.3);
 }

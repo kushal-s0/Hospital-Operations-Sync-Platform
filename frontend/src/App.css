@@ -1,26 +1,7 @@
 /* ============================================
-   HOSPITAL MANAGEMENT SYSTEM - APP LAYOUT
-   Professional Clinical-Grade Layout
+   HOSPITAL MANAGEMENT SYSTEM - APP UTILITIES
+   Shared page patterns used across every module
    ============================================ */
-
-.app {
-  min-height: 100vh;
-  background-color: var(--color-neutral-50);
-  display: flex;
-  flex-direction: column;
-  overflow-x: hidden;
-}
-
-/* === Main Content Area === */
-.main-content {
-  flex: 1;
-  margin-left: var(--sidebar-width);
-  margin-top: var(--header-height);
-  padding: var(--spacing-8);
-  background-color: var(--color-neutral-50);
-  min-height: calc(100vh - var(--header-height));
-  transition: margin-left var(--transition-base);
-}
 
 /* === Content Container === */
 .content-container {
@@ -29,24 +10,55 @@
   width: 100%;
 }
 
-/* === Page Header Utilities === */
+/* === Route transition (see Layout.js) ===
+   `backwards` fill so no transform lingers after the animation —
+   a lingering transform would break position:fixed modals inside pages. */
+.page-transition {
+  animation: hx-page-in 0.5s var(--ease-out) backwards;
+}
+
+/* === Page Header === */
 .page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--spacing-4);
   margin-bottom: var(--spacing-8);
-  padding-bottom: var(--spacing-6);
+  padding-bottom: var(--spacing-5);
   border-bottom: 1px solid var(--color-neutral-200);
 }
 
-.page-header h1 {
+.page-header h1,
+.page-title {
+  font-family: var(--font-family-heading);
   color: var(--color-neutral-900);
   font-size: var(--font-size-3xl);
-  font-weight: var(--font-weight-semibold);
-  margin-bottom: var(--spacing-2);
+  font-weight: var(--font-weight-extrabold);
+  letter-spacing: -0.025em;
+  margin-bottom: var(--spacing-1);
 }
 
-.page-header p {
-  color: var(--color-neutral-600);
+.page-header p,
+.page-subtitle {
+  color: var(--color-neutral-500);
   font-size: var(--font-size-base);
   line-height: var(--line-height-normal);
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--spacing-3);
+}
+
+/* === Stat grids (Dashboard & Receptionist tabs) === */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--spacing-5);
+  margin-bottom: var(--spacing-8);
 }
 
 /* === Grid Layouts === */
@@ -61,29 +73,12 @@
 .grid-cols-4 { grid-template-columns: repeat(4, 1fr); }
 
 /* === Flex Utilities === */
-.flex {
-  display: flex;
-}
-
-.flex-col {
-  flex-direction: column;
-}
-
-.flex-wrap {
-  flex-wrap: wrap;
-}
-
-.items-center {
-  align-items: center;
-}
-
-.justify-between {
-  justify-content: space-between;
-}
-
-.justify-center {
-  justify-content: center;
-}
+.flex { display: flex; }
+.flex-col { flex-direction: column; }
+.flex-wrap { flex-wrap: wrap; }
+.items-center { align-items: center; }
+.justify-between { justify-content: space-between; }
+.justify-center { justify-content: center; }
 
 .gap-2 { gap: var(--spacing-2); }
 .gap-3 { gap: var(--spacing-3); }
@@ -94,23 +89,22 @@
 /* === Loading States === */
 .loading-container {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: var(--spacing-4);
   min-height: 400px;
-  color: var(--color-neutral-600);
+  color: var(--color-neutral-500);
 }
 
 .loading-spinner {
-  width: 40px;
-  height: 40px;
-  border: 3px solid var(--color-neutral-200);
-  border-top-color: var(--color-primary-500);
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
+  background: conic-gradient(from 0deg, transparent 0 20%, var(--color-primary-500) 65%, var(--color-secondary-400));
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 4px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 5px), #000 calc(100% - 4px));
+  animation: hx-spin 0.9s linear infinite;
 }
 
 /* === Error States === */
@@ -124,10 +118,20 @@
 }
 
 .error-message {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-2);
+  padding: var(--spacing-3) var(--spacing-4);
+  margin-bottom: var(--spacing-5);
+  background: var(--color-error-50);
+  border: 1px solid var(--color-error-200);
+  border-radius: var(--radius-md);
   color: var(--color-error-700);
-  font-size: var(--font-size-lg);
+  font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
   text-align: center;
+  animation: hx-fade-up 0.35s var(--ease-out) backwards;
 }
 
 .error-description {
@@ -157,7 +161,7 @@
 
 .empty-state-title {
   font-size: var(--font-size-xl);
-  font-weight: var(--font-weight-medium);
+  font-weight: var(--font-weight-semibold);
   color: var(--color-neutral-700);
   margin-bottom: var(--spacing-2);
 }
@@ -193,7 +197,7 @@
 
 .section-title {
   font-size: var(--font-size-2xl);
-  font-weight: var(--font-weight-semibold);
+  font-weight: var(--font-weight-bold);
   color: var(--color-neutral-900);
   margin-bottom: var(--spacing-2);
 }
@@ -204,62 +208,75 @@
   line-height: var(--line-height-relaxed);
 }
 
+/* ============================================
+   GLOBAL MODAL POLISH
+   Every module ships its own modal markup; this gives them all the
+   same blurred backdrop and spring entrance.
+   ============================================ */
+[class*="modal-overlay"] {
+  background-color: rgba(15, 23, 42, 0.55) !important;
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  animation: hx-fade-in 0.2s ease-out backwards;
+}
+
+.modal-content,
+.admission-modal,
+.appointment-modal,
+.edit-modal,
+.prediction-modal,
+.restock-modal {
+  border-radius: var(--radius-2xl);
+  box-shadow: 0 32px 64px -16px rgba(15, 23, 42, 0.35);
+  animation: hx-modal-in 0.4s var(--ease-spring) backwards;
+}
+
+.modal-close-btn {
+  transition: transform 0.3s var(--ease-spring), background-color 0.2s;
+}
+
+.modal-close-btn:hover {
+  transform: rotate(90deg);
+}
+
 /* === Responsive Design === */
 @media (max-width: 1200px) {
   .grid-cols-4 {
     grid-template-columns: repeat(2, 1fr);
   }
-  
-  .main-content {
-    padding: var(--spacing-6);
-  }
 }
 
 @media (max-width: 768px) {
-  .main-content {
-    margin-left: 0;
-    padding: var(--spacing-4);
-    margin-top: var(--header-height);
-  }
-  
   .grid-cols-2,
   .grid-cols-3,
   .grid-cols-4 {
     grid-template-columns: 1fr;
   }
-  
-  .page-header h1 {
+
+  .page-header h1,
+  .page-title {
     font-size: var(--font-size-2xl);
   }
-  
+
   .section-title {
     font-size: var(--font-size-xl);
   }
 }
 
 @media (max-width: 480px) {
-  .main-content {
-    padding: var(--spacing-3);
-  }
-  
   .page-header {
     margin-bottom: var(--spacing-6);
     padding-bottom: var(--spacing-4);
   }
-  
-  .page-header h1 {
+
+  .page-header h1,
+  .page-title {
     font-size: var(--font-size-xl);
   }
 }
 
 /* === Print Styles === */
 @media print {
-  .main-content {
-    margin-left: 0;
-    margin-top: 0;
-    padding: 0;
-  }
-  
   .page-header {
     border-bottom: 2px solid var(--color-neutral-900);
   }

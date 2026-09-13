@@ -172,7 +172,7 @@ HOSPITAL_LOCATION = {
 
 # OpenWeatherMap API Key
 # API key configured for real-time weather and AQI data
-OPENWEATHER_API_KEY = config('OPENWEATHER_API_KEY', default='YOUR_OPENWEATHER_API_KEY')
+OPENWEATHER_API_KEY = config('OPENWEATHER_API_KEY', default='')
 
 # =============================================================================
 # RAZORPAY PAYMENT GATEWAY SETTINGS
